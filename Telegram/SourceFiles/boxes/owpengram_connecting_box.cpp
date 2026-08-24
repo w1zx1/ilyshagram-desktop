@@ -69,9 +69,9 @@ void ConnectingBox::updateText() {
 		return;
 	}
 	if (_failed) {
-		_label->setText(u"Connection failed"_q);
+		_label->setText(tr::lng_owpengram_server_connect_failed(tr::now));
 	} else {
-		_label->setText(u"Connecting to server"_q + QString(_dots, '.'));
+		_label->setText(tr::lng_owpengram_server_connecting(tr::now) + QString(_dots, '.'));
 	}
 }
 

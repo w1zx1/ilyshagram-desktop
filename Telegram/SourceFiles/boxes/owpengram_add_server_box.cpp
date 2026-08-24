@@ -118,7 +118,7 @@ AvatarNameDescRow::AvatarNameDescRow(
 	_picker = Ui::CreateChild<ServerLogoPicker>(this, preview, std::move(choose));
 	_iconLbl = Ui::CreateChild<Ui::FlatLabel>(
 		this,
-		u"Icon"_q,
+		tr::lng_owpengram_server_icon(tr::now),
 		st::introServerAddIconCaption);
 	_name = Ui::CreateChild<Ui::InputField>(
 		this,
@@ -216,9 +216,9 @@ RadioTypeRow::RadioTypeRow(
 		std::shared_ptr<Ui::RadiobuttonGroup> group)
 : RpWidget(parent) {
 	_single = Ui::CreateChild<Ui::Radiobutton>(
-		this, group, 0, u"Single server"_q);
+		this, group, 0, tr::lng_owpengram_server_single(tr::now));
 	_multi = Ui::CreateChild<Ui::Radiobutton>(
-		this, group, 2, u"Multi-DC (Telegram)"_q);
+		this, group, 2, tr::lng_owpengram_server_multi(tr::now));
 }
 
 int RadioTypeRow::resizeGetHeight(int newWidth) {
@@ -277,7 +277,7 @@ AddServerBox::AddServerBox(
 	_content->add(
 		object_ptr<Ui::FlatLabel>(
 			_content,
-			u"Server type"_q,
+			tr::lng_owpengram_server_type(tr::now),
 			st::boxLabel),
 		st::boxRowPadding);
 	_content->add(object_ptr<Ui::FixedHeightWidget>(_content, 6));
@@ -299,7 +299,7 @@ AddServerBox::AddServerBox(
 		inner->add(
 			object_ptr<Ui::FlatLabel>(
 				inner,
-				u"Main data center"_q,
+				tr::lng_owpengram_server_main_dc(tr::now),
 				st::boxLabel),
 			st::boxRowPadding);
 		_mainDcField = inner->add(
