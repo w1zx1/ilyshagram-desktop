@@ -1,4 +1,4 @@
-import os, sys, pprint, re, json, pathlib, hashlib, subprocess, glob, tempfile
+import os, sys, pprint, re, json, pathlib, hashlib, subprocess, glob, tempfile, shutil
 
 executePath = os.getcwd()
 sys.dont_write_bytecode = True
@@ -61,6 +61,7 @@ optionsList = [
     'qt6',
     'skip-release',
     'build-stackwalk',
+    'fetch',
 ]
 options = []
 runCommand = []
@@ -266,6 +267,113 @@ def filterByPlatform(commands):
                     result = result + command + '\n'
     return [result, dependencies, version]
 
+def isDownloadLine(line):
+    s = line.strip()
+    if re.search(r'\bgit clone\b', s):
+        return True
+    if re.search(r'\bgit submodule update\b', s):
+        return True
+    if re.search(r'\bgit (fetch|pull)\b', s):
+        return True
+    if re.search(r'\bgit checkout\b', s):
+        return True
+    if re.search(r'\b(wget|curl)\b', s):
+        return True
+    if re.search(r'(iwr|Invoke-WebRequest)', s):
+        return True
+    if re.search(r'\bpacman -S', s):
+        return True
+    if re.search(r'(pip install|python -m pip install)', s):
+        return True
+    if re.search(r'\bnuget\b', s):
+        return True
+    return False
+
+def cloneTargetDir(line):
+    tokens = line.replace('(', ' ').replace(')', ' ').split()
+    last = tokens[-1]
+    if last.startswith('-') or '://' in last or last.startswith('git@') or last.startswith('ssh://'):
+        base = last.rstrip('/').split('/')[-1]
+        if base.endswith('.git'):
+            base = base[:-4]
+        return base
+    return last
+
+def cleanInvalidClones(commands, directory):
+    for line in commands.split('\n'):
+        if 'git clone' in line:
+            target = cloneTargetDir(line)
+            target = target.replace('$QT', os.environ.get('QT', ''))
+            target = os.path.expandvars(target)
+            path = os.path.join(directory, target)
+            if os.path.isdir(path):
+                try:
+                    r = subprocess.run(
+                        ['git', '-C', path, 'rev-parse', 'HEAD'],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        env=modifiedEnv)
+                    if r.returncode != 0:
+                        shutil.rmtree(path)
+                except Exception:
+                    pass
+
+def verifyFetchedClones(commands, directory):
+    for line in commands.split('\n'):
+        if 'git clone' in line:
+            target = cloneTargetDir(line)
+            target = target.replace('$QT', os.environ.get('QT', ''))
+            target = os.path.expandvars(target)
+            path = os.path.join(directory, target)
+            valid = os.path.isdir(path) and subprocess.run(
+                ['git', '-C', path, 'rev-parse', 'HEAD'],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                env=modifiedEnv).returncode == 0
+            if not valid:
+                error('Fetch incomplete, clone target missing or invalid: ' + path)
+
+def filterLines(commands, keepDownload):
+    lines = commands.split('\n')
+    result = ''
+    for i, line in enumerate(lines):
+        s = line.strip()
+        if len(s) == 0:
+            continue
+        isDl = isDownloadLine(line)
+        if keepDownload:
+            if isDl:
+                if 'git clone' in line:
+                    target = cloneTargetDir(line)
+                    result = result + 'if not exist ' + target + ' ( ' + line + ' )\n'
+                else:
+                    result = result + line + '\n'
+            elif re.match(r'(cd|SET|set)\b', s):
+                nxt = None
+                for j in range(i + 1, len(lines)):
+                    if lines[j].strip() != '':
+                        nxt = lines[j]
+                        break
+                if nxt is not None and isDownloadLine(nxt):
+                    result = result + line + '\n'
+        else:
+            if not isDl:
+                result = result + line + '\n'
+    return result
+
+def fetchedMarkerPath(stage):
+    return keyPath(stage) + '.fetched'
+
+def writeFetchedMarker(stage):
+    key = fetchedMarkerPath(stage)
+    with open(key, 'w') as file:
+        file.write(stage['key'] if 'key' in stage else '')
+
+def clearFetchedMarker(stage):
+    key = fetchedMarkerPath(stage)
+    if os.path.exists(key):
+        os.remove(key)
+
 def stage(name, commands, location = 'Libraries'):
     if location == 'Libraries':
         directory = libsDir
@@ -363,7 +471,7 @@ getch = _Getch()
 
 def runStages():
     onlyStages = []
-    rebuildStale = False
+    rebuildStale = ('fetch' in options)
     for arg in sys.argv[1:]:
         if arg in options:
             continue
@@ -388,6 +496,34 @@ def runStages():
         prefix = '[' + str(index) + '/' + str(count) + '](' + stage['location'] + '/' + stage['name'] + version + ')'
         print(prefix + ': ', end = '', flush=True)
         stage['key'] = computeCacheKey(stage)
+
+        fetchedMarker = fetchedMarkerPath(stage)
+        if 'fetch' in options:
+            if stage['location'] != 'ThirdParty':
+                if os.path.exists(fetchedMarker):
+                    print('SKIPPING (already fetched)')
+                    continue
+                fetchCommands = filterLines(stage['commands'], True)
+                cleanInvalidClones(fetchCommands, stage['directory'])
+                print('FETCHING:')
+                os.chdir(stage['directory'])
+                if not run(fetchCommands):
+                    print(prefix + ': FETCH FAILED')
+                    finish(1)
+                verifyFetchedClones(fetchCommands, stage['directory'])
+                writeFetchedMarker(stage)
+                continue
+
+        if ('fetch' not in options) and os.path.exists(fetchedMarker):
+            print('BUILDING (from fetched):')
+            os.chdir(stage['directory'])
+            if not run(filterLines(stage['commands'], False)):
+                print(prefix + ': FAILED')
+                finish(1)
+            writeCacheKey(stage)
+            clearFetchedMarker(stage)
+            continue
+
         commands = removeDir(stage['name']) + '\n' + stage['commands']
         checkResult = 'Forced' if len(onlyStages) > 0 else checkCacheKey(stage)
         if checkResult == 'Good':
