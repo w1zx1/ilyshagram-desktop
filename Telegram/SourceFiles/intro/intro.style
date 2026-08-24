@@ -240,7 +240,7 @@ introServerOfficialBadge: FlatLabel(defaultFlatLabel) {
 	}
 }
 introServerRowJoinButton: RoundButton(defaultActiveButton) {
-	width: 64px;
+	width: 120px;
 	height: 32px;
 	radius: 8px;
 	textTop: 7px;

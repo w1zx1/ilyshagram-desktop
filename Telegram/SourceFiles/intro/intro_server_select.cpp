@@ -344,6 +344,8 @@ ServerSelectWidget::ServerSelectWidget(
 			});
 		}));
 	});
+
+	_addServer->hide();
 }
 
 void ServerSelectWidget::finishInit() {
@@ -359,7 +361,7 @@ void ServerSelectWidget::activate() {
 	_panel->show();
 	_scroll->show();
 	_rowsContainer->show();
-	_addServer->show();
+	_addServer->hide();
 	_statusTimer.cancel();
 	_statusTimer.callEach(30000);
 }
@@ -434,9 +436,10 @@ void ServerSelectWidget::rebuildList() {
 			editFn));
 	};
 
+	constexpr auto kHideTelegramServer = true;
 	auto servers = std::vector<Owpengram::Server>();
 	for (const auto &server : Owpengram::ListServers()) {
-		if (server.valid()) {
+		if (server.valid() && (!kHideTelegramServer || !server.isTelegram)) {
 			servers.push_back(server);
 		}
 	}
