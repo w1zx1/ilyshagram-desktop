@@ -21,6 +21,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/download_path_box.h"
 #include "core/application.h"
 #include "core/core_settings.h"
+#include "discord/discord_presence.h"
 #include "core/file_utilities.h"
 #include "core/launcher.h"
 #include "core/update_checker.h"
@@ -553,6 +554,27 @@ void BuildSystemIntegrationSection(SectionBuilder &builder) {
 			settings->setSystemTextReplace(checked);
 			Core::App().saveSettingsDelayed();
 		}, systemReplace->lifetime());
+	}
+
+	const auto discordRpc = builder.addCheckbox({
+		.id = u"advanced/discord_rpc"_q,
+		.title = tr::lng_settings_discord_rpc(),
+		.checked = settings->discordRpcEnabled(),
+		.keywords = { u"discord"_q, u"rpc"_q, u"rich presence"_q },
+	});
+	if (discordRpc) {
+		discordRpc->checkedChanges(
+		) | rpl::filter([=](bool checked) {
+			return (checked != settings->discordRpcEnabled());
+		}) | rpl::on_next([=](bool checked) {
+			settings->setDiscordRpcEnabled(checked);
+			Core::App().saveSettingsDelayed();
+			if (checked) {
+				DiscordRpc::StartDefault();
+			} else {
+				DiscordRpc::Stop();
+			}
+		}, discordRpc->lifetime());
 	}
 
 #ifndef OS_MAC_STORE

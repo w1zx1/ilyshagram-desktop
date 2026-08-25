@@ -752,6 +752,13 @@ public:
 	[[nodiscard]] bool systemAccentColorEnabled() const {
 		return _systemAccentColorEnabled;
 	}
+
+	void setDiscordRpcEnabled(bool value) {
+		_discordRpcEnabled = value;
+	}
+	[[nodiscard]] bool discordRpcEnabled() const {
+		return _discordRpcEnabled;
+	}
 	[[nodiscard]] WindowTitleContent windowTitleContent() const {
 		return _windowTitleContent.current();
 	}
@@ -1171,6 +1178,7 @@ private:
 	rpl::variable<std::optional<bool>> _systemDarkMode = std::nullopt;
 	rpl::variable<bool> _systemDarkModeEnabled = false;
 	bool _systemAccentColorEnabled = true;
+	bool _discordRpcEnabled = true;
 	rpl::variable<WindowTitleContent> _windowTitleContent;
 	WindowPosition _windowPosition; // per-window
 	bool _disableOpenGL = false;

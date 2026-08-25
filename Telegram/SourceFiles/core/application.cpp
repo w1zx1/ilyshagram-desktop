@@ -31,6 +31,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/ui_integration.h"
 #include "core/branding.h"
 #include "core/version.h"
+#include "discord/discord_presence.h"
 #include "chat_helpers/emoji_keywords.h"
 #include "chat_helpers/stickers_emoji_image_loader.h"
 #include "base/platform/base_platform_global_shortcuts.h"
@@ -227,6 +228,8 @@ Application::~Application() {
 		Local::writeSettings();
 	}
 
+	DiscordRpc::Stop();
+
 	_windowStack.clear();
 	setLastActiveWindow(nullptr);
 	_windowInSettings = _lastActivePrimaryWindow = nullptr;
@@ -406,6 +409,10 @@ void Application::run() {
 
 	DEBUG_LOG(("Application Info: showing."));
 	_lastActivePrimaryWindow->finishFirstShow();
+
+	if (settings().discordRpcEnabled()) {
+		DiscordRpc::StartDefault();
+	}
 
 	if (!_lastActivePrimaryWindow->locked() && cStartToSettings()) {
 		_lastActivePrimaryWindow->showSettings();
