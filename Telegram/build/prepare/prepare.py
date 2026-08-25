@@ -499,10 +499,16 @@ def runStages():
 
         fetchedMarker = fetchedMarkerPath(stage)
         if 'fetch' in options:
-            if stage['location'] != 'ThirdParty':
-                if os.path.exists(fetchedMarker):
-                    print('SKIPPING (already fetched)')
-                    continue
+            if os.path.exists(fetchedMarker):
+                print('SKIPPING (already fetched)')
+                continue
+            if stage['location'] == 'ThirdParty':
+                print('FETCHING:')
+                os.chdir(stage['directory'])
+                if not run(stage['commands']):
+                    print(prefix + ': FETCH FAILED')
+                    finish(1)
+            else:
                 fetchCommands = filterLines(stage['commands'], True)
                 cleanInvalidClones(fetchCommands, stage['directory'])
                 print('FETCHING:')
@@ -511,10 +517,13 @@ def runStages():
                     print(prefix + ': FETCH FAILED')
                     finish(1)
                 verifyFetchedClones(fetchCommands, stage['directory'])
-                writeFetchedMarker(stage)
-                continue
+            writeFetchedMarker(stage)
+            continue
 
         if ('fetch' not in options) and os.path.exists(fetchedMarker):
+            if stage['location'] == 'ThirdParty':
+                print('SKIPPING (already fetched)')
+                continue
             print('BUILDING (from fetched):')
             os.chdir(stage['directory'])
             if not run(filterLines(stage['commands'], False)):
