@@ -107,7 +107,7 @@ void AboutBox(not_null<Ui::GenericBox*> box) {
 			box->getDelegate()->show(
 				Ui::MakeInformBox(
 					"The link to the current private alpha "
-					"version of Telegram Desktop was copied "
+					"version of ilyshaGram Desktop was copied "
 					"to the clipboard."));
 		} else {
 			File::OpenUrl(Core::App().changelogLink());

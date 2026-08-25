@@ -16,6 +16,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/platform/base_platform_info.h"
 #include "base/qthelp_regex.h"
 
+#include "owpengram/owpengram_lang.h"
+
 #include "lang_auto_counts.h" // kKeysCount, kTagsCount.
 
 namespace Lang {
@@ -559,6 +561,7 @@ void Instance::loadFromContent(const QByteArray &content) {
 	} else if (!loader.warnings().isEmpty()) {
 		LOG(("Lang load warnings: %1").arg(loader.warnings()));
 	}
+	Owpengram::ApplyLangRebrandOverrides();
 }
 
 void Instance::fillFromCustomContent(
@@ -694,6 +697,12 @@ void Instance::applyDifferenceToMe(
 			resetValue(key);
 		});
 	}
+	if (!_derived) {
+		_updated.fire({});
+	} else {
+		_derived->_updated.fire({});
+	}
+	Owpengram::ApplyLangRebrandOverrides();
 	if (!_derived) {
 		_updated.fire({});
 	} else {

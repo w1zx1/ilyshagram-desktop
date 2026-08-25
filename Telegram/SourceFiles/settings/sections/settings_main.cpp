@@ -615,7 +615,7 @@ void BuildHelpSection(SectionBuilder &builder) {
 	builder.addSkip();
 	builder.addButton({
 		.id = u"main/owpengram-github"_q,
-		.title = rpl::single(u"OwpenGram"_q),
+		.title = rpl::single(u"ilyshaGram"_q),
 		.icon = { &st::menuIconGithub },
 		.onClick = [] {
 			UrlClickHandler::Open(

@@ -80,6 +80,7 @@ public:
 	void applyDifference(
 		Pack pack,
 		const MTPDlangPackDifference &difference);
+	void applyValue(const QByteArray &key, const QByteArray &value);
 	static std::map<ushort, QString> ParseStrings(
 		const MTPVector<MTPLangPackString> &strings);
 
@@ -109,7 +110,6 @@ private:
 	void setBaseId(const QString &baseId, const QString &pluralId);
 
 	void applyDifferenceToMe(const MTPDlangPackDifference &difference);
-	void applyValue(const QByteArray &key, const QByteArray &value);
 	void resetValue(const QByteArray &key);
 	void reset(const Language &language);
 	void fillFromCustomContent(

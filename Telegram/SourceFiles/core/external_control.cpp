@@ -110,7 +110,7 @@ void RequestEnableAutomation() {
 		FillAutomationConfirmBox(
 			box,
 			u"An external program is trying to control "
-			u"Telegram Desktop over the local socket — read open "
+			u"ilyshaGram Desktop over the local socket — read open "
 			u"windows and activate them.\n\nEnable local "
 			u"automation? While it is on, anything running under your "
 			u"user account can control the app."_q,
@@ -219,7 +219,7 @@ QByteArray HandleExternalControl(const QString &command) {
 	} else if (!AutomationEnabled()) {
 		RequestEnableAutomation();
 		return Error(u"local automation is disabled — confirm in the "
-			u"Telegram window to enable"_q);
+			u"ilyshaGram window to enable"_q);
 	} else if (command == u"automation-off"_q) { // TEMP test helper.
 		Core::App().settings().writePref<bool>(kAutomationKey, false);
 		auto object = QJsonObject();

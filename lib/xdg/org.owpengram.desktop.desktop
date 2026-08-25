@@ -1,8 +1,8 @@
 [Desktop Entry]
-Name=OwpenGram
+Name=ilyshaGram
 Comment=New era of messaging
-TryExec=OwpenGram
-Exec=OwpenGram -- %U
+TryExec=ilyshaGram
+Exec=ilyshaGram -- %U
 Icon=org.owpengram.desktop
 Terminal=false
 StartupWMClass=org.owpengram.desktop
@@ -17,6 +17,6 @@ X-GNOME-UsesNotifications=true
 X-GNOME-SingleWindow=true
 
 [Desktop Action quit]
-Exec=OwpenGram -quit
-Name=Quit OwpenGram
+Exec=ilyshaGram -quit
+Name=Quit ilyshaGram
 Icon=application-exit

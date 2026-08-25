@@ -2167,7 +2167,7 @@ void Application::RegisterUrlScheme() {
 		.executable = Platform::ExecutablePathForShortcuts(),
 		.arguments = arguments,
 		.protocol = u"owpg"_q,
-		.protocolName = u"OwpenGram Link"_q,
+		.protocolName = u"ilyshaGram Link"_q,
 		.shortAppName = u"tdesktop"_q,
 		.longAppName = QCoreApplication::applicationName(),
 		.displayAppName = AppName.utf16(),

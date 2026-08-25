@@ -108,7 +108,7 @@
     </content_rating>
     <launchable type="desktop-id">org.owpengram.desktop.desktop</launchable>
     <provides>
-        <binary>OwpenGram</binary>
+        <binary>ilyshaGram</binary>
         <dbus type="session">org.owpengram.desktop</dbus>
         <mediatype>x-scheme-handler/tg</mediatype>
         <mediatype>x-scheme-handler/tonsite</mediatype>

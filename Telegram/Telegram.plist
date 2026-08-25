@@ -6,7 +6,7 @@
 	<string>@output_name@</string>
 	<key>CFBundleGetInfoString</key>
 	<!-- NOTE: This value should match Branding::AppName in core/branding.h -->
-	<string>OwpenGram Desktop messaging app</string>
+	<string>ilyshaGram Desktop messaging app</string>
 	<key>CFBundleIconFile</key>
 	<string>Icon.icns</string>
 	<key>CFBundleIconName</key>

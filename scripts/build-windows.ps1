@@ -251,7 +251,7 @@ try {
     $build = "msbuild `"$SolutionPath`" /t:Telegram /p:Configuration=$Configuration /m /nr:false /v:minimal"
     Invoke-Vs -Command $build -WorkingDirectory $RepoRoot -Label 'build'
 
-    foreach ($name in @('OwpenGram.exe', 'Telegram.exe')) {
+    foreach ($name in @('ilyshaGram.exe', 'OwpenGram.exe', 'Telegram.exe')) {
         $exe = Join-Path $RepoRoot "out\$Configuration\$name"
         if (Test-Path $exe) {
             Write-Ok "EXE: $exe"

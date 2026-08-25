@@ -11,10 +11,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 namespace Branding {
 
-constexpr auto AppName = "OwpenGram Desktop"_cs;
-constexpr auto ShortAppName = "OwpenGram"_cs;
-constexpr auto ApplicationName = "OwpengramDesktop"_cs;
-constexpr auto CompanyName = "OwpenGram"_cs;
+constexpr auto AppName = "ilyshaGram Desktop"_cs;
+constexpr auto ShortAppName = "ilyshaGram"_cs;
+constexpr auto ApplicationName = "ilyshaGramDesktop"_cs;
+constexpr auto CompanyName = "ilyshaGram"_cs;
 
 #ifdef _DEBUG
 constexpr auto WindowsIconPath = "Resources/OwpenGram/art/icon256_debug.ico"_cs;

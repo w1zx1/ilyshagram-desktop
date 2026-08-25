@@ -24,10 +24,10 @@ add_subdirectory(codegen)
 get_filename_component(src_loc SourceFiles REALPATH)
 get_filename_component(res_loc Resources REALPATH)
 
-set(branding_app_name "OwpenGram Desktop")
-set(branding_short_app_name "OwpenGram")
-set(branding_application_name "OwpengramDesktop")
-set(branding_company_name "OwpenGram")
+set(branding_app_name "ilyshaGram Desktop")
+set(branding_short_app_name "ilyshaGram")
+set(branding_application_name "ilyshaGramDesktop")
+set(branding_company_name "ilyshaGram")
 set(branding_bundle_identifier "org.owpengram.desktop")
 
 include(cmake/telegram_options.cmake)
@@ -1577,6 +1577,8 @@ PRIVATE
     mtproto/mtp_instance.h
     owpengram/owpengram_servers.cpp
     owpengram/owpengram_servers.h
+    owpengram/owpengram_lang.cpp
+    owpengram/owpengram_lang.h
     mtproto/proxy_check.cpp
     mtproto/proxy_check.h
     mtproto/sender.h
@@ -2241,7 +2243,7 @@ endif()
 if (build_macstore)
     set(bundle_identifier "org.owpengram.desktop")
     set(bundle_entitlements "Telegram Lite.entitlements")
-    set(output_name "OwpenGram Lite")
+    set(output_name "ilyshaGram Lite")
     target_link_options(Telegram
     PRIVATE
         -F${libs_loc}/breakpad/src/client/mac/build/Release
@@ -2262,7 +2264,7 @@ else()
         set(bundle_identifier "com.owpengram.OwpenGram")
     endif()
     set(bundle_entitlements "Telegram.entitlements")
-    set(output_name "OwpenGram")
+    set(output_name "ilyshaGram")
 endif()
 
 if (CMAKE_GENERATOR STREQUAL Xcode)
