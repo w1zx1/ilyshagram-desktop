@@ -8584,7 +8584,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_owpengram_server_host" = "IP-адрес";
 "lng_owpengram_server_port" = "Порт";
 "lng_owpengram_server_rsa_key" = "RSA-ключ (необязательно)";
-"lng_owpengram_server_rsa_key_hint" = "Формат PEM. Оставьте пустым, чтобы использовать ключ ilyshaGram по умолчанию.";
+"lng_owpengram_server_rsa_key_hint" = "Формат PEM. Оставьте пустым, чтобы использовался ключ OwpenGram по умолчанию.";
 "lng_owpengram_server_rsa_key_invalid" = "Неверный RSA-ключ. Используйте PEM-формат (BEGIN PUBLIC KEY или BEGIN RSA PUBLIC KEY).";
 "lng_owpengram_server_description" = "Описание";
 "lng_owpengram_server_endpoint" = "IP: {host}  Порт: {port}";
