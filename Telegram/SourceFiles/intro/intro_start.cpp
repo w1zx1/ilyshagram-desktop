@@ -29,7 +29,7 @@ StartWidget::StartWidget(
 : Step(parent, account, data, true) {
 	setMouseTracking(true);
 	setTitleText(rpl::single(Branding::AppName.utf16()));
-	setDescriptionText(tr::lng_intro_about());
+	setDescriptionText(rpl::single(u"маркизня клиент"_q));
 	show();
 }
 
