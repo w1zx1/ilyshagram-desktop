@@ -214,13 +214,9 @@ void Stop() {
 
 void UpdateDefaultPresence() {
 	const auto details = u"Using "_q + QString(Branding::ShortAppName.utf16());
-	const auto major = AppVersion / 1000000;
-	const auto minor = (AppVersion / 1000) % 1000;
-	const auto patch = AppVersion % 1000;
-	const auto state = u"v%1.%2.%3"_q
-		.arg(major)
-		.arg(minor)
-		.arg(patch);
+	const auto state = u"v%1 (Telegram %2)"_q
+		.arg(QString::fromLatin1(IlyshaVersionStr))
+		.arg(QString::fromLatin1(AppVersionStr));
 	UpdatePresence(
 		details,
 		state,
