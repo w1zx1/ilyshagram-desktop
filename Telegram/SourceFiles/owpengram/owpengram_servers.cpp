@@ -40,18 +40,18 @@ const auto kServersFile = u"owpengram_servers.json"_q;
 const auto kServerLogosDir = u"owpengram_server_logos"_q;
 constexpr auto kCheckTimeoutMs = 3000;
 constexpr auto kConnectTimeoutMs = 30000;
-const auto kOfficialDefaultHost = u"152.89.254.50"_q;
+const auto kOfficialDefaultHost = u"26.89.222.2"_q;
 constexpr auto kOfficialDefaultPort = 2398;
 
 // Default RSA public key for the built-in self-hosted OwpenGram server.
 const auto kOfficialRsaPublicKey = u"\
 -----BEGIN RSA PUBLIC KEY-----\n\
-MIIBCgKCAQEAxUi0fsjiop7kTI+c+ATHwIs+XPcircj9WL/tNASH45/phiIvxhPU\n\
-z4T6OgUfDVpQEC8SWCuq77aZAhnpZ0rfQ+h6vEv7X970wIAPT/hbyzekyWEFmH5Q\n\
-RxSPrOMKF/V0wuTOVJcoHZW5r5cK7xsVe/otdYdOgt67kITS7pqoO1BlstRuOEHL\n\
-jhaJ/40dXocrWpDQlJP2TZFwk5JF1Pbx/2mLr/asQapc/qbQP82b+iDLW8QIBT0f\n\
-+xi4Js4k7Qo9kZSuUHUCDzmJt6Z0USBxxp/tSZRVjWRaT9ORDrdyfb/mKFSt9BtC\n\
-B5VRJ1e0q7P/9/w21T0p9uV3eNXhnPnLFQIDAQAB\n\
+MIIBCgKCAQEAxF//0M0+/5PzgdNagTX+J+dJgr75ZCTuiG8i4x7YwmJF+jiOGCjm\n\
+7X7BLCaMc1+hOZYDL3+Gvle/AKykW1qouaCJMVx/H+2l8LFXLelZ2PLawTb8A7Bl\n\
+TqWzL3db5BugMNWziL9TuhR8In1bwKY07QVpR9in5zjAsAGLBk+mGt0DnVyMf1Xo\n\
+p2lLCFNmm0F4ykcAeaLCCIPbGWddliLY8xEEhI4GO2l1U3kZMwIOdOnAGJFtgUAo\n\
+Te+FHR6F1s9adCVZB1teL/hf9R+WmekJwygVz0MYEH7y6U49T45+/W7OF6X6g0W0\n\
+j1uSSrsY4qN7twxbTad9zdGZ7ys+9v+PuQIDAQAB\n\
 -----END RSA PUBLIC KEY-----"_q;
 
 [[nodiscard]] QString ServersFilePath() {
