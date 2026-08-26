@@ -344,8 +344,6 @@ ServerSelectWidget::ServerSelectWidget(
 			});
 		}));
 	});
-
-	_addServer->hide();
 }
 
 void ServerSelectWidget::finishInit() {
@@ -361,7 +359,7 @@ void ServerSelectWidget::activate() {
 	_panel->show();
 	_scroll->show();
 	_rowsContainer->show();
-	_addServer->hide();
+	_addServer->show();
 	_statusTimer.cancel();
 	_statusTimer.callEach(30000);
 }
