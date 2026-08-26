@@ -418,7 +418,7 @@ void ServerDetailsBox::prepare() {
 	} else {
 		addButton(tr::lng_close(), [=] { closeBox(); });
 	}
-	setDimensionsToContent(st::boxWidth, _content);
+	setDimensionsToContent(st::introServerDetailsBoxWidth, _content);
 	Owpengram::CheckServerOnline(_server, crl::guard(this, [=](
 			bool online,
 			int latencyMs) {

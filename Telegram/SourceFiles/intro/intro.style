@@ -292,6 +292,7 @@ introServerDetailsHeaderSkip: 16px;
 introServerDetailsRowSkip: 10px;
 introServerDetailsSectionSkip: 16px;
 introServerDetailsLabelWidth: 120px;
+introServerDetailsBoxWidth: 420px;
 introServerDetailsLabel: FlatLabel(defaultFlatLabel) {
 	textFg: windowSubTextFg;
 	style: TextStyle(defaultTextStyle) {
