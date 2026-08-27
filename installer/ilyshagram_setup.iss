@@ -1,5 +1,5 @@
 #define MyAppName "ilyshaGram"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion RemoveFileExt(GetFileVersion("..\out\Release\ilyshaGram.exe"))
 #define MyAppPublisher "ilyshaGram"
 #define MyAppExeName "ilyshaGram.exe"
 #define MyAppSource "..\out\Release\ilyshaGram.exe"
@@ -15,18 +15,18 @@ OutputDir=out
 OutputBaseFilename=ilyshagram-setup
 Compression=lzma2/ultra
 SolidCompression=yes
-WizardStyle=modern
+WizardStyle=modern dark
+DisableProgramGroupPage=yes
+SetupIconFile=..\Telegram\Resources\OwpenGram\art\icon256.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ArchitecturesInstallIn64BitMode=x64
 PrivilegesRequired=lowest
 
 [Languages]
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
-Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Создать ярлык на Рабочем столе"; GroupDescription: "Дополнительно:"
-Name: "startup"; Description: "Запускать при входе в Windows"; GroupDescription: "Дополнительно:"
 
 [Files]
 Source: "{#MyAppSource}"; DestDir: "{app}"; Flags: ignoreversion
@@ -37,6 +37,3 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Запустить {#MyAppName}"; Flags: nowait postinstall skipifsilent
-
-[Registry]
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyAppName}"; ValueData: """{app}\{#MyAppExeName}"""; Tasks: startup
