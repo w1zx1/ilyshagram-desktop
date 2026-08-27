@@ -78,3 +78,6 @@ settings.local.json
 nul
 # Generated changelog page (built by CI, deployed to GitHub Pages)
 /docs/changelog/
+
+# InnoSetup installer output
+/installer/out/

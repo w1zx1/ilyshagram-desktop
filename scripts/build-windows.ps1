@@ -2,6 +2,8 @@
 param(
     [string]$ServerHost,
     [int]$ServerPort = 0,
+    # Skip building the InnoSetup installer after the build.
+    [switch]$NoInstaller,
     # Release is the default: Debug builds run 5-15x slower (no optimization,
     # MSVC debug iterators, assertions) and feel laggy when opening chats etc.
     [ValidateSet('Release', 'Debug')]
@@ -255,6 +257,45 @@ try {
         $exe = Join-Path $RepoRoot "out\$Configuration\$name"
         if (Test-Path $exe) {
             Write-Ok "EXE: $exe"
+
+            if (-not $NoInstaller) {
+                Write-Step 'Build installer (InnoSetup)'
+                $iss = Join-Path $RepoRoot 'installer\ilyshagram_setup.iss'
+                $iscc = $null
+                $candidates = @(
+                    Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe'
+                    Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe'
+                    Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+                )
+                foreach ($cand in $candidates) {
+                    if ($cand -and (Test-Path $cand)) {
+                        $iscc = $cand
+                        break
+                    }
+                }
+                if (-not $iscc) {
+                    Write-Err "ISCC not found (searched AppData, Program Files) — skipping installer. Install Inno Setup 6 or pass -NoInstaller."
+                } elseif (-not (Test-Path $iss)) {
+                    Write-Err "Installer script not found: $iss — skipping installer."
+                } else {
+                    $psi = New-Object System.Diagnostics.ProcessStartInfo
+                    $psi.FileName = $iscc
+                    $psi.Arguments = "`"$iss`""
+                    $psi.WorkingDirectory = Split-Path $iss -Parent
+                    $psi.UseShellExecute = $false
+                    $p = New-Object System.Diagnostics.Process
+                    $p.StartInfo = $psi
+                    $null = $p.Start()
+                    $p.WaitForExit()
+                    if ($p.ExitCode -ne 0) {
+                        Write-Err "InnoSetup failed (exit $($p.ExitCode)). Installer not produced."
+                    } else {
+                        $setup = Join-Path $RepoRoot 'installer\out\ilyshagram-setup.exe'
+                        Write-Ok "Installer: $setup"
+                    }
+                }
+            }
+
             exit 0
         }
     }
