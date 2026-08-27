@@ -2099,8 +2099,47 @@ if (DESKTOP_APP_USE_PACKAGED)
     )
 endif()
 
+# Generate the Windows version resource include from version.h so the only
+# source of truth for the ilyshaGram version is SourceFiles/core/version.h.
+if (WIN32)
+    set(ilysha_version_h "${CMAKE_CURRENT_SOURCE_DIR}/SourceFiles/core/version.h")
+    set(ilysha_version_inc "${CMAKE_CURRENT_SOURCE_DIR}/Resources/winrc/version_auto.rc.inc")
+    set(ilysha_ver "0.0.0")
+    set(ilysha_ver_numeric "0,0,0,0")
+    if (EXISTS "${ilysha_version_h}")
+        file(READ "${ilysha_version_h}" _ilysha_version_content)
+        string(REGEX MATCH "IlyshaVersionStr[ \t]*=[ \t]*\"([0-9]+\\.[0-9]+\\.[0-9]+)\"" _ilysha_match "${_ilysha_version_content}")
+        if (_ilysha_match)
+            set(ilysha_ver "${CMAKE_MATCH_1}")
+            string(REPLACE "." ";" _ilysha_parts "${ilysha_ver}")
+            list(LENGTH _ilysha_parts _ilysha_count)
+            set(_ilysha_num "")
+            set(_idx 0)
+            while (_idx LESS 4)
+                if (_idx LESS _ilysha_count)
+                    list(GET _ilysha_parts ${_idx} _p)
+                else()
+                    set(_p 0)
+                endif()
+                if (_idx GREATER 0)
+                    string(APPEND _ilysha_num ",")
+                endif()
+                string(APPEND _ilysha_num "${_p}")
+                math(EXPR _idx "${_idx}+1")
+            endwhile()
+            set(ilysha_ver_numeric "${_ilysha_num}")
+        else()
+            message(WARNING "IlyshaVersionStr not found in ${ilysha_version_h}, using default version 0.0.0")
+        endif()
+    endif()
+    file(WRITE "${ilysha_version_inc}"
+        "#define ILYSHA_FILEVERSION ${ilysha_ver_numeric}\n"
+        "#define ILYSHA_PRODUCTVERSION ${ilysha_ver_numeric}\n"
+        "#define ILYSHA_VERSION_STR \"${ilysha_ver}\"\n")
+endif()
+
 nice_target_sources(Telegram ${res_loc}
-PRIVATE
+ PRIVATE
     qrc/emoji_1.qrc
     qrc/emoji_2.qrc
     qrc/emoji_3.qrc

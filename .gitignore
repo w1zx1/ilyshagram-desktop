@@ -81,3 +81,6 @@ nul
 
 # InnoSetup installer output
 /installer/out/
+
+# Generated Windows version resource include (derived from core/version.h)
+/Telegram/Resources/winrc/version_auto.rc.inc

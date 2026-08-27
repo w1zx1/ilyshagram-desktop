@@ -22,6 +22,8 @@
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
 
+#include "version_auto.rc.inc"
+
 /////////////////////////////////////////////////////////////////////////////
 // English (United States) resources
 
@@ -48,8 +50,8 @@ IDI_ICON1               ICON                    "..\\OwpenGram\\art\\icon256.ico
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 7,0,2,0
- PRODUCTVERSION 7,0,2,0
+ FILEVERSION ILYSHA_FILEVERSION
+ PRODUCTVERSION ILYSHA_PRODUCTVERSION
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -67,10 +69,10 @@ BEGIN
             // NOTE: These values should match Branding::CompanyName and Branding::AppName in core/branding.h
             VALUE "CompanyName", "ilyshaGram"
             VALUE "FileDescription", "ilyshaGram Desktop"
-            VALUE "FileVersion", "7.0.2.0"
+            VALUE "FileVersion", ILYSHA_VERSION_STR
             VALUE "LegalCopyright", "Copyright (C) 2014-2026"
             VALUE "ProductName", "ilyshaGram Desktop"
-            VALUE "ProductVersion", "7.0.2.0"
+            VALUE "ProductVersion", ILYSHA_VERSION_STR
         END
     END
     BLOCK "VarFileInfo"
