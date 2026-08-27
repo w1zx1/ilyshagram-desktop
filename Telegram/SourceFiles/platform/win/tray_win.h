@@ -57,7 +57,6 @@ public:
 	[[nodiscard]] static QPixmap IconWithCounter(
 		Window::CounterLayerArgs &&args,
 		bool smallIcon,
-		bool monochrome,
 		bool supportMode);
 	[[nodiscard]] static QString QuitJumpListIconPath();
 

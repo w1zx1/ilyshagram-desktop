@@ -30,14 +30,6 @@ namespace {
 
 using namespace gi::repository;
 
-[[nodiscard]] QString PanelIconName(int counter, bool muted) {
-	return ApplicationIconName() + ((counter > 0)
-		? (muted
-			? u"-mute"_q
-			: u"-attention"_q)
-		: QString()) + u"-symbolic"_q;
-}
-
 } // namespace
 
 class IconGraphic final {
@@ -53,13 +45,12 @@ private:
 	struct State {
 		QIcon systemIcon;
 		QString iconThemeName;
-		bool monochrome = false;
 		int32 counter = 0;
 		bool muted = false;
 	};
 
 	[[nodiscard]] QIcon systemIcon() const;
-	[[nodiscard]] bool isCounterNeeded(const State &state) const;
+	[[nodiscard]] bool isCounterNeeded() const;
 	[[nodiscard]] int counterSlice(int counter) const;
 	[[nodiscard]] QSize dprSize(const QImage &image) const;
 
@@ -81,14 +72,13 @@ IconGraphic::~IconGraphic() = default;
 
 QIcon IconGraphic::systemIcon() const {
 	if (_new.iconThemeName == _current.iconThemeName
-		&& _new.monochrome == _current.monochrome
 		&& (_new.counter > 0) == (_current.counter > 0)
 		&& _new.muted == _current.muted) {
 		return _current.systemIcon;
 	}
 
 	const auto candidates = {
-		_new.monochrome ? PanelIconName(_new.counter, _new.muted) : QString(),
+		QString(),
 		ApplicationIconName(),
 	};
 
@@ -105,10 +95,8 @@ QIcon IconGraphic::systemIcon() const {
 	return QIcon();
 }
 
-bool IconGraphic::isCounterNeeded(const State &state) const {
-	return state.systemIcon.name() != PanelIconName(
-		state.counter,
-		state.muted);
+bool IconGraphic::isCounterNeeded() const {
+	return true;
 }
 
 int IconGraphic::counterSlice(int counter) const {
@@ -123,7 +111,6 @@ QSize IconGraphic::dprSize(const QImage &image) const {
 
 void IconGraphic::updateState() {
 	_new.iconThemeName = QIcon::themeName();
-	_new.monochrome = Core::App().settings().trayIconMonochrome();
 	_new.counter = Core::App().unreadBadge();
 	_new.muted = Core::App().unreadBadgeMuted();
 	_new.systemIcon = systemIcon();
@@ -133,7 +120,7 @@ bool IconGraphic::isRefreshNeeded() const {
 	return _trayIcon.isNull()
 		|| _new.iconThemeName != _current.iconThemeName
 		|| _new.systemIcon.name() != _current.systemIcon.name()
-		|| (isCounterNeeded(_new)
+		|| (isCounterNeeded()
 			? _new.muted != _current.muted
 				|| counterSlice(_new.counter) != counterSlice(
 						_current.counter)
@@ -149,7 +136,7 @@ QIcon IconGraphic::trayIcon() {
 		_current = _new;
 	});
 
-	if (!isCounterNeeded(_new)) {
+	if (!isCounterNeeded()) {
 		_trayIcon = _new.systemIcon;
 		return _trayIcon;
 	}
@@ -412,12 +399,5 @@ rpl::lifetime &Tray::lifetime() {
 }
 
 Tray::~Tray() = default;
-
-bool HasMonochromeSetting() {
-	return QIcon::hasThemeIcon(
-		PanelIconName(
-			Core::App().unreadBadge(),
-			Core::App().unreadBadgeMuted()));
-}
 
 } // namespace Platform

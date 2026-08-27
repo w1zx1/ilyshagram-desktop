@@ -457,28 +457,6 @@ void BuildSystemIntegrationSection(SectionBuilder &builder) {
 			})
 			: nullptr;
 
-		const auto monochrome = Platform::HasMonochromeSetting()
-			? builder.addCheckbox({
-				.id = u"advanced/monochrome_icon"_q,
-				.title = tr::lng_settings_monochrome_icon(),
-				.checked = settings->trayIconMonochrome(),
-				.keywords = { u"monochrome"_q, u"icon"_q, u"tray"_q },
-				.shown = tray
-					? tray->checkedValue()
-					: rpl::single(trayEnabled()),
-			})
-			: nullptr;
-
-		if (monochrome) {
-			monochrome->checkedChanges(
-			) | rpl::filter([=](bool value) {
-				return (value != settings->trayIconMonochrome());
-			}) | rpl::on_next([=](bool value) {
-				settings->setTrayIconMonochrome(value);
-				Core::App().saveSettingsDelayed();
-			}, monochrome->lifetime());
-		}
-
 		const auto updateWorkmode = [=] {
 			const auto newMode = (tray && tray->checked())
 				? ((!taskbar || taskbar->checked())
@@ -1683,22 +1661,6 @@ void SetupSystemIntegrationContent(
 		const auto tray = addCheckbox(
 			tr::lng_settings_workmode_tray(),
 			trayEnabled());
-		const auto monochrome = Platform::HasMonochromeSetting()
-			? addSlidingCheckbox(
-				tr::lng_settings_monochrome_icon(),
-				settings->trayIconMonochrome())
-			: nullptr;
-		if (monochrome) {
-			monochrome->toggle(tray->checked(), anim::type::instant);
-
-			monochrome->entity()->checkedChanges(
-			) | rpl::filter([=](bool value) {
-				return (value != settings->trayIconMonochrome());
-			}) | rpl::on_next([=](bool value) {
-				settings->setTrayIconMonochrome(value);
-				Core::App().saveSettingsDelayed();
-			}, monochrome->lifetime());
-		}
 
 		const auto taskbarEnabled = [=] {
 			const auto workMode = settings->workMode();
@@ -1734,9 +1696,6 @@ void SetupSystemIntegrationContent(
 				taskbar->setChecked(true);
 			} else {
 				updateWorkmode();
-			}
-			if (monochrome) {
-				monochrome->toggle(checked, anim::type::normal);
 			}
 		}, tray->lifetime());
 

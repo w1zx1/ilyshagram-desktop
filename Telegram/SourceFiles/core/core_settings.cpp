@@ -494,7 +494,7 @@ QByteArray Settings::serialize() const {
 			stream << id;
 		}
 		stream
-			<< qint32(_trayIconMonochrome.current() ? 1 : 0)
+			<< qint32(0) // reserved, previously tray monochrome icon flag
 			<< qint32(_ttlVoiceClickTooltipHidden.current() ? 1 : 0)
 			<< _playbackDeviceId.current()
 			<< _captureDeviceId.current()
@@ -654,7 +654,7 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	quint64 macRoundIconDigest = _macRoundIconDigest.value_or(0);
 	qint32 storiesClickTooltipHidden = _storiesClickTooltipHidden.current() ? 1 : 0;
 	base::flat_set<QString> recentEmojiSkip;
-	qint32 trayIconMonochrome = (_trayIconMonochrome.current() ? 1 : 0);
+	qint32 trayIconMonochrome = 0;
 	qint32 ttlVoiceClickTooltipHidden = _ttlVoiceClickTooltipHidden.current() ? 1 : 0;
 	QByteArray ivPosition;
 	QByteArray callPanelPosition;
@@ -933,6 +933,7 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 		// Let existing clients use the old value.
 		trayIconMonochrome = 0;
 	}
+	(void)trayIconMonochrome;
 	if (!stream.atEnd()) {
 		stream >> ttlVoiceClickTooltipHidden;
 	}
@@ -1280,7 +1281,6 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	_macRoundIconDigest = macRoundIconDigest ? macRoundIconDigest : std::optional<uint64>();
 	_storiesClickTooltipHidden = (storiesClickTooltipHidden == 1);
 	_recentEmojiSkip = std::move(recentEmojiSkip);
-	_trayIconMonochrome = (trayIconMonochrome == 1);
 	_ttlVoiceClickTooltipHidden = (ttlVoiceClickTooltipHidden == 1);
 	if (!ivPosition.isEmpty()) {
 		_ivPosition = Deserialize(ivPosition);

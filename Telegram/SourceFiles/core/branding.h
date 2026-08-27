@@ -35,10 +35,6 @@ constexpr auto PlaneWhitePath = ":/gui/plane_white.svg"_cs;
 constexpr auto BusinessLogoPath = ":/gui/art/business_logo.png"_cs;
 constexpr auto AffiliateLogoPath = ":/gui/art/affiliate_logo.png"_cs;
 
-constexpr auto TrayMonochromePath = ":/gui/icons/tray/monochrome.svg"_cs;
-constexpr auto TrayMonochromeAttentionPath = ":/gui/icons/tray/monochrome_attention.svg"_cs;
-constexpr auto TrayMonochromeMutePath = ":/gui/icons/tray/monochrome_mute.svg"_cs;
-
 constexpr auto BundleIdentifier = "org.owpengram.desktop"_cs;
 
 #ifdef _DEBUG

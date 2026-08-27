@@ -11,8 +11,6 @@ namespace Platform {
 
 class Tray;
 
-[[nodiscard]] bool HasMonochromeSetting();
-
 } // namespace Platform
 
 // Platform dependent implementations.

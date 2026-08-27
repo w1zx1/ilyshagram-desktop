@@ -832,15 +832,7 @@ public:
 	[[nodiscard]] CloseBehavior closeBehavior() const {
 		return _closeBehavior;
 	}
-	void setTrayIconMonochrome(bool value) {
-		_trayIconMonochrome = value;
-	}
-	[[nodiscard]] bool trayIconMonochrome() const {
-		return _trayIconMonochrome.current();
-	}
-	[[nodiscard]] rpl::producer<bool> trayIconMonochromeChanges() const {
-		return _trayIconMonochrome.changes();
-	}
+
 
 	void setCustomDeviceModel(const QString &model) {
 		_customDeviceModel = model;
@@ -1185,7 +1177,6 @@ private:
 	rpl::variable<WorkMode> _workMode = WorkMode::WindowAndTray;
 	base::flags<Calls::Group::StickedTooltip> _hiddenGroupCallTooltips;
 	CloseBehavior _closeBehavior = CloseBehavior::Quit;
-	rpl::variable<bool> _trayIconMonochrome = true;
 	rpl::variable<QString> _customDeviceModel;
 	rpl::variable<Media::RepeatMode> _playerRepeatMode;
 	rpl::variable<Media::OrderMode> _playerOrderMode;
