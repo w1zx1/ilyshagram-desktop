@@ -610,7 +610,7 @@ void BuildHelpSection(SectionBuilder &builder) {
 		builder.addSkip();
 	}
 
-	// Separate block: a link to the OwpenGram project on GitHub.
+	// Separate block: a link to the ilyshaGram project on GitHub.
 	builder.addDivider();
 	builder.addSkip();
 	builder.addButton({
@@ -619,7 +619,7 @@ void BuildHelpSection(SectionBuilder &builder) {
 		.icon = { &st::menuIconGithub },
 		.onClick = [] {
 			UrlClickHandler::Open(
-				u"https://github.com/owpengram/owpengram-server"_q);
+				u"https://github.com/w1zx1/ilyshagram-desktop"_q);
 		},
 		.keywords = { u"github"_q, u"source"_q, u"project"_q },
 	});
