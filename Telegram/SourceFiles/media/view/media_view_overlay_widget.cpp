@@ -896,6 +896,8 @@ OverlayWidget::OverlayWidget()
 		// opening not as overlay over the main window, but as
 		// a separate fullscreen window with a separate space.
 		_window->setWindowFlags(Qt::FramelessWindowHint | Qt::Tool);
+	} else {
+		_window->setWindowFlags(Qt::FramelessWindowHint);
 	}
 	_widget->setMouseTracking(true);
 
