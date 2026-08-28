@@ -9,7 +9,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "base/power_save_blocker.h"
 #include "ui/platform/ui_platform_window_title.h"
+#include "ui/platform/ui_platform_window.h"
 #include "ui/widgets/rp_window.h"
+#include "core/application.h"
+#include "core/core_settings.h"
 #include "ui/layers/layer_manager.h"
 #include "ui/layers/show.h"
 #include "styles/style_calls.h"
@@ -94,6 +97,21 @@ Window::Window()
 {
 	_layerBg->setStyleOverrides(&st::groupCallBox, &st::groupCallLayerBox);
 	_layerBg->setHideByBackgroundClick(true);
+
+#ifndef Q_OS_MAC
+	const auto applyNativeFrame = [=] {
+		const auto native = Ui::Platform::NativeWindowFrameSupported()
+			&& Core::App().settings().nativeWindowFrame();
+		window()->setNativeFrame(native);
+	};
+	window()->winIdValue() | rpl::on_next([=] {
+		applyNativeFrame();
+	}, window()->lifetime());
+	Core::App().settings().nativeWindowFrameChanges(
+	) | rpl::on_next([=] {
+		applyNativeFrame();
+	}, window()->lifetime());
+#endif // !Q_OS_MAC
 }
 
 Window::~Window() = default;
