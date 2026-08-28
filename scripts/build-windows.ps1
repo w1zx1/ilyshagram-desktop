@@ -246,7 +246,7 @@ try {
     # on this toolchain. -D overrides cmake_helpers' non-FORCE cache default.
     # qt6 arg (see prepare step above) + .\ prefix so configure.bat resolves even
     # when CWD isn't on the executable search path in this invocation context.
-    $configure = ".\configure.bat x64 qt6 -D TDESKTOP_API_ID=$($api.Id) -D TDESKTOP_API_HASH=$($api.Hash) -D CMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded"
+    $configure = ".\configure.bat x64 qt6 -D TDESKTOP_API_ID=$($api.Id) -D TDESKTOP_API_HASH=$($api.Hash) -D CMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded -D DESKTOP_APP_ENABLE_LTO=ON"
     Invoke-Vs -Command $configure -WorkingDirectory $TelegramDir -Label 'configure'
 
     Write-Step "MSBuild $Configuration"
