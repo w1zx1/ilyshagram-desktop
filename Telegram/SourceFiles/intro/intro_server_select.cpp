@@ -129,7 +129,15 @@ ServerRow::ServerRow(
 			p.setFont(font);
 			p.drawText(QRect(0, 0, size, size), Qt::AlignCenter, ch);
 		} else {
-			const auto circleMask = !_server.isOfficial;
+			// Keyed on "is this bundled art" rather than on isOfficial:
+			// ":/gui/art/..." logos ship pre-shaped and carry transparency
+			// outside the circle, so masking them would clip the design.
+			// Everything else is an arbitrary rectangular image -- picked by
+			// the user, or fetched from the server by RefreshServersInfo --
+			// and has to be cropped to the circle. The official server now
+			// gets a fetched logo too, so isOfficial no longer implies
+			// bundled art, which is what left it square here.
+			const auto circleMask = !path.startsWith(u":/"_q);
 			const auto image = QPixmap(path).scaled(
 				size,
 				size,
@@ -143,8 +151,16 @@ ServerRow::ServerRow(
 				p.setPen(Qt::NoPen);
 				p.setBrush(st::boxBg);
 				p.drawEllipse(0, 0, size, size);
-				p.setClipRect(0, 0, size, size);
-				p.setClipRegion(QRegion(0, 0, size, size, QRegion::Ellipse));
+				// QRegion-based clipping (the previous QRegion::Ellipse) is
+				// always rasterized with hard, aliased edges in Qt no matter
+				// what PainterHighQualityEnabler sets -- it's a genuinely
+				// different clip path than a QPainterPath's, which does
+				// respect antialiasing. That mismatch is what made a custom
+				// server's logo render as a visibly jagged circle instead of
+				// a smooth one.
+				auto clipPath = QPainterPath();
+				clipPath.addEllipse(0, 0, size, size);
+				p.setClipPath(clipPath);
 			}
 			p.drawPixmap(left, top, image);
 		}
@@ -345,9 +361,18 @@ ServerSelectWidget::ServerSelectWidget(
 		}));
 	});
 
-#ifndef _DEBUG
-	_addServer->hide();
-#endif // !_DEBUG
+	// The custom-server list can also change from outside this screen's own
+	// Add Server button -- e.g. an owpg://addserver link opened from a
+	// browser while this screen already happens to be showing opens
+	// AddServerBox globally (see Core::Application::openLocalUrl), with no
+	// reference back to this particular widget to refresh directly.
+	// Subscribing here instead of relying only on the button's own callback
+	// above is what makes a just-added server show up immediately rather
+	// than only after leaving and re-entering this screen.
+	Owpengram::CustomServersChanges(
+	) | rpl::on_next([=] {
+		rebuildList();
+	}, lifetime());
 }
 
 void ServerSelectWidget::finishInit() {
@@ -370,6 +395,18 @@ void ServerSelectWidget::activate() {
 #endif // _DEBUG
 	_statusTimer.cancel();
 	_statusTimer.callEach(30000);
+
+	// Pull each server's current name/description/icon. Without this the
+	// list keeps showing whatever identity was captured when the server was
+	// added, so an operator changing the logo or title only reached users
+	// who happened to open Edit Server and re-fetch by hand.
+	//
+	// Fire-and-forget: anything that actually changed is written and fires
+	// CustomServersChanges, which the constructor subscribes to, so the
+	// rows update themselves once the replies land. Nothing changed means
+	// no notification and no rebuild -- which is also why this is called
+	// from activate() and never from rebuildList().
+	Owpengram::RefreshServersInfo();
 }
 
 void ServerSelectWidget::submit() {
@@ -514,10 +551,17 @@ void ServerSelectWidget::proceedJoin(const Owpengram::Server &server) {
 		return;
 	}
 	const auto weak = base::make_weak(this);
-	// Block all input with a modal until the connection succeeds or times out.
-	const auto box = Ui::show(Box<ConnectingBox>());
 	Owpengram::ApplyServerToAccount(&account(), server);
-	Owpengram::WaitForServerConnection(&account(), server, crl::guard(weak, [=](
+	const auto cancel = std::make_shared<Fn<void()>>();
+	// Shown from the first frame with a working Cancel button (see
+	// ConnectingBox) -- a dead/unreachable server must never force the user
+	// to sit through the full 30s timeout with no way out.
+	const auto box = Ui::show(Box<ConnectingBox>(crl::guard(weak, [=] {
+		if (*cancel) {
+			(*cancel)();
+		}
+	})));
+	*cancel = Owpengram::WaitForServerConnection(&account(), server, crl::guard(weak, [=](
 			bool ok) {
 		if (!weak) {
 			return;

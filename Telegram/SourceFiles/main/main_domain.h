@@ -33,10 +33,15 @@ public:
 
 	static constexpr auto kMaxAccounts = 3;
 	static constexpr auto kPremiumMaxAccounts = 6;
-	// Hard cap on the total number of accounts of any server. Custom self-hosted
-	// accounts don't count toward the Telegram free/premium limit, so the overall
-	// cap is higher than the Telegram-only kPremiumMaxAccounts.
-	static constexpr auto kMaxTotalAccounts = 10;
+	// Not a business rule like kMaxAccounts/kPremiumMaxAccounts (the real
+	// Telegram free/premium limit, enforced separately via
+	// telegramAccountsCount() and only counting official Telegram accounts) --
+	// this is just a defensive upper bound for array/index sizing and detecting
+	// corrupted on-disk account data (see Storage::Domain::start). Self-hosted
+	// accounts are meant to be effectively unlimited, so this is set far above
+	// any real usage rather than removed outright, which would turn a corrupted
+	// accounts-count byte into an unbounded allocation/loop on load.
+	static constexpr auto kMaxTotalAccounts = 50;
 
 	explicit Domain(const QString &dataName);
 	~Domain();
@@ -92,10 +97,6 @@ public:
 
 private:
 	void activateAfterStarting();
-	// Blocks input with a modal while a freshly-activated account connects to its
-	// server; on timeout switches to a working account (Telegram if available).
-	void guardServerConnection(not_null<Main::Account*> account);
-	void switchToFallbackAccount(not_null<Main::Account*> failed);
 	void closeAccountWindows(not_null<Main::Account*> account);
 	bool removePasscodeIfEmpty();
 	void watchSession(not_null<Account*> account);

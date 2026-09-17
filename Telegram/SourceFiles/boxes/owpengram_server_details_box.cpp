@@ -9,6 +9,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "base/weak_ptr.h"
 #include "lang/lang_keys.h"
+#include "main/main_account.h"
 #include "owpengram/owpengram_servers.h"
 #include "ui/boxes/confirm_box.h"
 #include "ui/painter.h"
@@ -203,7 +204,15 @@ HeaderRow::HeaderRow(
 			p.setFont(font);
 			p.drawText(QRect(0, 0, logoSize, logoSize), Qt::AlignCenter, ch);
 		} else {
-			const auto circleMask = !isOfficial;
+			// Keyed on "is this bundled art" rather than on isOfficial:
+			// ":/gui/art/..." logos ship pre-shaped and carry transparency
+			// outside the circle, so masking them would clip the design.
+			// Everything else is an arbitrary rectangular image -- picked by
+			// the user, or fetched from the server by RefreshServersInfo --
+			// and has to be cropped to the circle. The official server now
+			// gets a fetched logo too, so isOfficial no longer implies
+			// bundled art, which is what left it square here.
+			const auto circleMask = !path.startsWith(u":/"_q);
 			const auto image = QPixmap(path).scaled(
 				logoSize,
 				logoSize,
@@ -217,8 +226,15 @@ HeaderRow::HeaderRow(
 				p.setPen(Qt::NoPen);
 				p.setBrush(st::boxBg);
 				p.drawEllipse(0, 0, logoSize, logoSize);
-				p.setClipRect(0, 0, logoSize, logoSize);
-				p.setClipRegion(QRegion(0, 0, logoSize, logoSize, QRegion::Ellipse));
+				// QRegion-based clipping is always rasterized with hard,
+				// aliased edges in Qt no matter what PainterHighQualityEnabler
+				// sets -- a QPainterPath clip is a genuinely different path
+				// that does respect antialiasing. Same fix as ServerRow in
+				// intro_server_select.cpp, which this had drifted out of sync
+				// with (visibly jagged circle here, smooth one there).
+				auto clipPath = QPainterPath();
+				clipPath.addEllipse(0, 0, logoSize, logoSize);
+				p.setClipPath(clipPath);
 			}
 			p.drawPixmap(left, top, image);
 		}
@@ -380,15 +396,36 @@ void ServerDetailsBox::prepare() {
 		if (Owpengram::IsRemovableServer(_server)) {
 			const auto weak = base::make_weak(this);
 			addLeftButton(tr::lng_owpengram_server_delete(), [=] {
-				getDelegate()->show(Ui::MakeConfirmBox({
-					.text = tr::lng_owpengram_server_delete_confirm(
+				// Nothing else keeps an account pointed at a server that no
+				// longer exists in the list from silently breaking (see
+				// UpdateCustomServer's doc comment on the "server name
+				// disappeared" symptom) -- so rather than leave that account
+				// around in a broken state, warn up front and actually log
+				// it out as part of this same confirmation, instead of
+				// letting a stale account for a server nobody's going to use
+				// again linger in the switcher.
+				const auto affected = Owpengram::AccountsUsingServer(
+					_server.id);
+				const auto text = affected.empty()
+					? tr::lng_owpengram_server_delete_confirm(
 						tr::now,
 						lt_name,
-						_server.name),
+						_server.name)
+					: tr::lng_owpengram_server_delete_confirm_with_accounts(
+						tr::now,
+						lt_count,
+						float64(affected.size()),
+						lt_name,
+						_server.name);
+				getDelegate()->show(Ui::MakeConfirmBox({
+					.text = text,
 					.confirmed = crl::guard(weak, [=](Fn<void()> close) {
 						if (!weak) {
 							close();
 							return;
+						}
+						for (const auto &account : affected) {
+							account->logOut();
 						}
 						if (Owpengram::RemoveCustomServer(_server.id)) {
 							if (_removed) {
