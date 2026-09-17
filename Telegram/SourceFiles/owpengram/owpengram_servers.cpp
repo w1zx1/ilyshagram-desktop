@@ -11,6 +11,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "crl/crl_on_main.h"
 #include "lang/lang_keys.h"
 #include "main/main_account.h"
+#include "main/main_domain.h"
 #include "mtproto/facade.h"
 #include "mtproto/mtproto_config.h"
 #include "mtproto/details/mtproto_rsa_public_key.h"
@@ -23,6 +24,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/qt/qt_common_adapters.h"
 #include "ui/image/image.h"
 
+#include <QtCore/QCryptographicHash>
 #include <QtCore/QDir>
 #include <QtGui/QImage>
 #include <QtCore/QFile>
@@ -38,6 +40,11 @@ namespace {
 
 const auto kServersFile = u"owpengram_servers.json"_q;
 const auto kServerLogosDir = u"owpengram_server_logos"_q;
+// Built-in servers are synthesized from compile-time constants by
+// OfficialServer(), so unlike custom ones they have no entry in
+// kServersFile to write a refreshed name/description/logo back into. This
+// holds those cosmetic overrides for them, keyed by server id.
+const auto kBuiltinIdentityFile = u"owpengram_builtin_identity.json"_q;
 constexpr auto kCheckTimeoutMs = 3000;
 constexpr auto kConnectTimeoutMs = 30000;
 const auto kOfficialDefaultHost = u"26.89.222.2"_q;
@@ -71,6 +78,15 @@ j1uSSrsY4qN7twxbTad9zdGZ7ys+9v+PuQIDAQAB\n\
 	return document.array();
 }
 
+// Single choke point every AddCustomServer/UpdateCustomServer/
+// RemoveCustomServer writes through, so firing the change notification here
+// (rather than separately in each of those three) can never drift out of
+// sync with a future fourth mutator.
+[[nodiscard]] rpl::event_stream<> &CustomServersChangedStream() {
+	static auto stream = rpl::event_stream<>();
+	return stream;
+}
+
 void WriteCustomServersJson(const QJsonArray &array) {
 	const auto path = ServersFilePath();
 	QDir().mkpath(QFileInfo(path).absolutePath());
@@ -79,6 +95,76 @@ void WriteCustomServersJson(const QJsonArray &array) {
 		return;
 	}
 	file.write(QJsonDocument(array).toJson(QJsonDocument::Compact));
+	// Close (flush) explicitly before firing: the change notification's
+	// subscribers re-read this same file synchronously and immediately
+	// (ServerSelectWidget's list rebuild), and on Windows a second QFile
+	// opened for reading against a path this object still has open for
+	// writing can see stale buffered content rather than what was just
+	// written -- this was the actual cause of the server-select list not
+	// updating live for an owpg://addserver-added server until the screen
+	// was left and re-entered (by which point this object had long since
+	// gone out of scope and closed on its own).
+	file.close();
+	CustomServersChangedStream().fire({});
+}
+
+// Cosmetic-only identity a built-in server reported over /owpengram/server-info.
+// Empty fields mean "nothing stored", which falls back to the compiled-in
+// defaults rather than blanking them.
+struct BuiltinIdentity {
+	QString name;
+	QString description;
+	QString logoPath;
+};
+
+[[nodiscard]] QString BuiltinIdentityFilePath() {
+	return cWorkingDir() + u"tdata/"_q + kBuiltinIdentityFile;
+}
+
+[[nodiscard]] QJsonObject ReadBuiltinIdentityJson() {
+	QFile file(BuiltinIdentityFilePath());
+	if (!file.open(QIODevice::ReadOnly)) {
+		return {};
+	}
+	const auto document = QJsonDocument::fromJson(file.readAll());
+	return document.isObject() ? document.object() : QJsonObject();
+}
+
+[[nodiscard]] BuiltinIdentity ReadBuiltinIdentity(const QString &serverId) {
+	const auto object = ReadBuiltinIdentityJson().value(serverId).toObject();
+	auto result = BuiltinIdentity();
+	result.name = object.value(u"name"_q).toString();
+	result.description = object.value(u"description"_q).toString();
+	result.logoPath = object.value(u"logoPath"_q).toString();
+	return result;
+}
+
+void WriteBuiltinIdentity(
+		const QString &serverId,
+		const BuiltinIdentity &value) {
+	auto root = ReadBuiltinIdentityJson();
+	auto object = QJsonObject();
+	if (!value.name.isEmpty()) {
+		object.insert(u"name"_q, value.name);
+	}
+	if (!value.description.isEmpty()) {
+		object.insert(u"description"_q, value.description);
+	}
+	if (!value.logoPath.isEmpty()) {
+		object.insert(u"logoPath"_q, value.logoPath);
+	}
+	root.insert(serverId, object);
+
+	const auto path = BuiltinIdentityFilePath();
+	QDir().mkpath(QFileInfo(path).absolutePath());
+	QFile file(path);
+	if (!file.open(QIODevice::WriteOnly)) {
+		return;
+	}
+	file.write(QJsonDocument(root).toJson(QJsonDocument::Compact));
+	// Closed before notifying for the same reason WriteCustomServersJson
+	// does it -- subscribers re-read this file synchronously.
+	file.close();
 }
 
 [[nodiscard]] std::optional<Storage::OwpengramServerSelection>
@@ -173,13 +259,25 @@ constexpr auto kSingleServerDcs = 5;
 	return logoPath.startsWith(kServerLogosDir);
 }
 
-[[nodiscard]] std::optional<QString> SaveCustomServerLogo(
+// True only for files SaveFetchedServerLogo() wrote, which it names
+// "<serverId>_<digest>.png". Distinguishes a logo this client pulled off the
+// server from one the user picked from disk (saved as "<serverId>.png") or
+// from bundled ":/gui/art" resources -- so dropping the icon on the server
+// can clear the former without ever discarding the latter two.
+[[nodiscard]] bool IsFetchedServerLogo(
 		const QString &serverId,
-		const QString &sourcePath) {
-	auto image = Images::Read({
-		.path = sourcePath,
-		.forceOpaque = true,
-	}).image;
+		const QString &logoPath) {
+	return IsCustomServerLogoPath(logoPath)
+		&& logoPath.startsWith(
+			kServerLogosDir + u"/"_q + serverId + u"_"_q);
+}
+
+// Centre-crops to a square, scales to 256x256 and writes PNG under
+// kServerLogosDir. baseName carries no extension. Returns the tdata-relative
+// path to store in Server::logoPath.
+[[nodiscard]] std::optional<QString> SaveServerLogoImage(
+		QImage image,
+		const QString &baseName) {
 	if (image.isNull()) {
 		return std::nullopt;
 	}
@@ -199,12 +297,40 @@ constexpr auto kSingleServerDcs = 5;
 		Qt::SmoothTransformation);
 	const auto dir = CustomServerLogosDirectory();
 	QDir().mkpath(dir);
-	const auto relative = kServerLogosDir + u"/"_q + serverId + u".png"_q;
+	const auto relative = kServerLogosDir + u"/"_q + baseName + u".png"_q;
 	const auto fullPath = cWorkingDir() + u"tdata/"_q + relative;
 	if (!image.save(fullPath, "PNG")) {
 		return std::nullopt;
 	}
 	return relative;
+}
+
+[[nodiscard]] std::optional<QString> SaveCustomServerLogo(
+		const QString &serverId,
+		const QString &sourcePath) {
+	return SaveServerLogoImage(
+		Images::Read({ .path = sourcePath, .forceOpaque = true }).image,
+		serverId);
+}
+
+// Icon bytes straight off /owpengram/server-icon. The file name carries a
+// digest of the bytes so a changed icon lands on a NEW path: the previous
+// one may still be held by an image cache keyed on the path, which is
+// exactly how a stale logo survives a refresh. The caller deletes the
+// superseded file once the new path is stored.
+[[nodiscard]] std::optional<QString> SaveFetchedServerLogo(
+		const QString &serverId,
+		const QByteArray &data) {
+	if (data.isEmpty()) {
+		return std::nullopt;
+	}
+	const auto digest = QString::fromLatin1(
+		QCryptographicHash::hash(data, QCryptographicHash::Md5)
+			.toHex()
+			.left(8));
+	return SaveServerLogoImage(
+		Images::Read({ .content = data, .forceOpaque = true }).image,
+		serverId + u"_"_q + digest);
 }
 
 void RemoveCustomServerLogoFile(const QString &logoPath) {
@@ -285,6 +411,115 @@ void ApplyServerToDcOptions(
 	dcOptions->setOptionsLocked(true);
 }
 
+// Stores the cosmetic fields a server just reported about itself. An empty
+// name/description/logoPath means the operator has not set that field, so
+// the existing value is kept rather than blanked.
+//
+// Returns without writing when nothing actually differs. That is load
+// bearing, not an optimisation: writing fires CustomServersChangedStream,
+// the visible server list rebuilds on it, and a rebuild is what triggers
+// the next refresh -- so an unconditional write would spin forever.
+void ApplyFetchedIdentity(
+		const Server &server,
+		const QString &name,
+		const QString &description,
+		const QString &logoPath,
+		bool hasIcon) {
+	auto supersededLogo = QString();
+
+	// hasIcon == false is an explicit "this server has no icon", unlike an
+	// empty name/description which only means the operator left the field
+	// blank. So it has to actively clear a logo previously pulled from this
+	// same server -- otherwise removing the icon there leaves the old one on
+	// screen forever. Only ever clears a fetched file: a logo the user chose
+	// from disk is theirs and survives.
+	const auto clearFetchedLogo = [&](const QString &current) {
+		return !hasIcon && IsFetchedServerLogo(server.id, current);
+	};
+
+	if (server.isOfficial) {
+		const auto current = ReadBuiltinIdentity(server.id);
+		auto next = current;
+		if (!name.isEmpty()) {
+			next.name = name;
+		}
+		if (!description.isEmpty()) {
+			next.description = description;
+		}
+		if (!logoPath.isEmpty()) {
+			next.logoPath = logoPath;
+		} else if (clearFetchedLogo(current.logoPath)) {
+			// Emptied here means the key is dropped on write, so
+			// OfficialServer() falls back to its bundled DefaultLogoPath().
+			next.logoPath = QString();
+		}
+		if (next.name == current.name
+			&& next.description == current.description
+			&& next.logoPath == current.logoPath) {
+			return;
+		}
+		// Only when the stored path actually moved: a round that changed just
+		// the name, while an icon fetch happened to fail, must not delete the
+		// logo file the entry still points at.
+		if (next.logoPath != current.logoPath) {
+			supersededLogo = current.logoPath;
+		}
+		WriteBuiltinIdentity(server.id, next);
+		CustomServersChangedStream().fire({});
+	} else {
+		auto array = ReadCustomServersJson();
+		auto changed = false;
+		for (auto i = 0; i != array.size(); ++i) {
+			auto object = array.at(i).toObject();
+			if (object.value(u"id"_q).toString() != server.id) {
+				continue;
+			}
+			if (!name.isEmpty()
+				&& object.value(u"name"_q).toString() != name) {
+				object.insert(u"name"_q, name);
+				changed = true;
+			}
+			if (!description.isEmpty()
+				&& object.value(u"description"_q).toString() != description) {
+				object.insert(u"description"_q, description);
+				changed = true;
+			}
+			const auto stored = object.value(u"logoPath"_q).toString();
+			if (!logoPath.isEmpty()) {
+				if (stored != logoPath) {
+					supersededLogo = stored;
+					object.insert(u"logoPath"_q, logoPath);
+					changed = true;
+				}
+			} else if (clearFetchedLogo(stored)) {
+				// Dropping the key rather than storing "" keeps this
+				// identical to a server that never had a logo, so the row
+				// falls back to the coloured letter avatar.
+				supersededLogo = stored;
+				object.remove(u"logoPath"_q);
+				changed = true;
+			}
+			if (changed) {
+				array.replace(i, object);
+			}
+			break;
+		}
+		if (!changed) {
+			return;
+		}
+		// Fires the change notification itself.
+		WriteCustomServersJson(array);
+	}
+
+	// Set only where the stored path actually changed above, so this can
+	// never delete a file an entry still points at. RemoveCustomServerLogoFile
+	// additionally refuses anything outside our own logos directory, so a
+	// user-picked path elsewhere on disk is left alone either way.
+	if (!supersededLogo.isEmpty()) {
+		RemoveCustomServerLogoFile(supersededLogo);
+	}
+}
+
 } // namespace
 
 [[nodiscard]] Server ServerFromStoredSelection(
@@ -342,6 +577,19 @@ Server OfficialServer() {
 	result.name = tr::lng_owpengram_server_official_name(tr::now);
 	result.description = tr::lng_owpengram_server_official_description(tr::now);
 	result.logoPath = DefaultLogoPath();
+	// Whatever the operator has since set on the server itself wins over the
+	// shipped defaults -- see RefreshServersInfo(). Only these three fields:
+	// host/port/key below stay compiled-in on purpose.
+	const auto identity = ReadBuiltinIdentity(result.id);
+	if (!identity.name.isEmpty()) {
+		result.name = identity.name;
+	}
+	if (!identity.description.isEmpty()) {
+		result.description = identity.description;
+	}
+	if (!identity.logoPath.isEmpty()) {
+		result.logoPath = identity.logoPath;
+	}
 	result.isOfficial = true;
 	result.host = kOfficialDefaultHost;
 	result.port = kOfficialDefaultPort;
@@ -410,6 +658,59 @@ std::optional<Server> AddCustomServer(
 	return server;
 }
 
+std::optional<Server> UpdateCustomServer(
+		const QString &id,
+		const QString &name,
+		const QString &host,
+		int port,
+		const QString &description,
+		const QString &rsaPublicKey,
+		const QString &logoSourcePath,
+		bool multiDc,
+		int mainDcId) {
+	if (id.isEmpty()
+		|| name.trimmed().isEmpty()
+		|| host.trimmed().isEmpty()
+		|| port <= 0) {
+		return std::nullopt;
+	}
+	auto array = ReadCustomServersJson();
+	auto index = -1;
+	for (auto i = 0; i != array.size(); ++i) {
+		if (array.at(i).isObject()
+			&& array.at(i).toObject().value(u"id"_q).toString() == id) {
+			index = i;
+			break;
+		}
+	}
+	if (index < 0) {
+		return std::nullopt;
+	}
+
+	auto server = Server();
+	server.id = id;
+	server.name = name.trimmed();
+	server.host = host.trimmed();
+	server.port = port;
+	server.description = description.trimmed();
+	server.rsaPublicKey = rsaPublicKey.trimmed();
+	server.isOfficial = false;
+	server.multiDc = multiDc;
+	server.mainDcId = (mainDcId > 0) ? mainDcId : 0;
+	// logoSourcePath empty means "unchanged" -- keep whatever this server
+	// already had on disk instead of silently dropping it.
+	server.logoPath = array.at(index).toObject().value(u"logoPath"_q).toString();
+	if (!logoSourcePath.isEmpty()) {
+		if (const auto saved = SaveCustomServerLogo(server.id, logoSourcePath)) {
+			server.logoPath = *saved;
+		}
+	}
+
+	array[index] = ServerToJson(server);
+	WriteCustomServersJson(array);
+	return server;
+}
+
 bool IsRemovableServer(const Server &server) {
 	return !server.isOfficial
 		&& server.id != QString::fromLatin1(kTelegramServerId)
@@ -439,6 +740,10 @@ bool RemoveCustomServer(const QString &id) {
 		WriteCustomServersJson(array);
 	}
 	return changed;
+}
+
+rpl::producer<> CustomServersChanges() {
+	return CustomServersChangedStream().events();
 }
 
 void RestoreServerToConfig(
@@ -542,6 +847,20 @@ Server CurrentServerForAccount(not_null<Main::Account*> account) {
 	return OfficialServer();
 }
 
+std::vector<not_null<Main::Account*>> AccountsUsingServer(
+		const QString &serverId) {
+	auto result = std::vector<not_null<Main::Account*>>();
+	if (serverId.isEmpty()) {
+		return result;
+	}
+	for (const auto &account : Core::App().domain().orderedAccounts()) {
+		if (CurrentServerForAccount(account).id == serverId) {
+			result.push_back(account);
+		}
+	}
+	return result;
+}
+
 QString ServerScopeKeyForAccount(not_null<Main::Account*> account) {
 	const auto server = CurrentServerForAccount(account);
 	if (server.isTelegram || server.host.isEmpty()) {
@@ -592,13 +911,17 @@ void ApplyServerToAccount(
 	}
 }
 
-void WaitForServerConnection(
+Fn<void()> WaitForServerConnection(
 		not_null<Main::Account*> account,
 		const Server &server,
 		Fn<void(bool ok)> done) {
 	const auto timer = std::make_shared<base::Timer>();
 	const auto started = crl::now();
+	const auto cancelled = std::make_shared<bool>(false);
 	timer->setCallback([=]() {
+		if (*cancelled) {
+			return;
+		}
 		auto &mtp = account->mtp();
 		const auto dcId = mtp.mainDcId();
 		const auto connected = (mtp.dcstate(dcId) == MTP::ConnectedState)
@@ -613,6 +936,10 @@ void WaitForServerConnection(
 		timer->callOnce(100);
 	});
 	timer->callOnce(100);
+	return [=] {
+		*cancelled = true;
+		timer->cancel();
+	};
 }
 
 void CheckServerOnline(
@@ -640,6 +967,178 @@ void CheckServerOnline(
 			done(connected, connected ? latency : -1);
 		});
 	});
+}
+
+// RawHttpGetBody performs a blocking plain-HTTP GET and returns the response
+// body on a 200 status, or std::nullopt on any failure (connect/write/read
+// timeout, non-200, malformed response). Must run off the main thread (see
+// callers, always inside crl::async) -- waitForConnected/waitForReadyRead
+// block the calling thread. Shared by FetchServerInfo and FetchServerIcon
+// so the same-port HTTP endpoints they hit only need one socket dance.
+[[nodiscard]] std::optional<QByteArray> RawHttpGetBody(
+		const QString &host,
+		int port,
+		const QByteArray &path) {
+	QTcpSocket socket;
+	socket.connectToHost(host, port);
+	if (!socket.waitForConnected(kCheckTimeoutMs)) {
+		return std::nullopt;
+	}
+	const auto request = "GET " + path + " HTTP/1.1\r\n"
+		"Host: " + host.toUtf8() + "\r\n"
+		"Connection: close\r\n"
+		"\r\n";
+	socket.write(request);
+	if (!socket.waitForBytesWritten(kCheckTimeoutMs)) {
+		return std::nullopt;
+	}
+
+	QByteArray raw;
+	while (socket.waitForReadyRead(kCheckTimeoutMs)) {
+		raw += socket.readAll();
+	}
+	raw += socket.readAll();
+	socket.disconnectFromHost();
+
+	const auto headerEnd = raw.indexOf("\r\n\r\n");
+	if (headerEnd < 0) {
+		return std::nullopt;
+	}
+	const auto statusLine = raw.left(raw.indexOf("\r\n"));
+	if (!statusLine.contains(" 200 ")) {
+		return std::nullopt;
+	}
+	return raw.mid(headerEnd + 4);
+}
+
+void FetchServerInfo(
+		const QString &host,
+		int port,
+		Fn<void(std::optional<ServerInfoFetchResult> result)> done) {
+	if (host.isEmpty() || port <= 0) {
+		done(std::nullopt);
+		return;
+	}
+	crl::async([=, done = std::move(done)]() mutable {
+		const auto body = RawHttpGetBody(host, port, "/owpengram/server-info");
+		if (!body) {
+			crl::on_main([=]() mutable { done(std::nullopt); });
+			return;
+		}
+		const auto document = QJsonDocument::fromJson(*body);
+		if (!document.isObject()) {
+			crl::on_main([=]() mutable { done(std::nullopt); });
+			return;
+		}
+		const auto object = document.object();
+		const auto pem = object.value("rsa_public_key_pem").toString();
+		if (pem.isEmpty()) {
+			crl::on_main([=]() mutable { done(std::nullopt); });
+			return;
+		}
+		const auto result = ServerInfoFetchResult{
+			.rsaPublicKeyPem = pem,
+			.dcId = object.value("dc_id").toInt(),
+			.name = object.value("name").toString(),
+			.description = object.value("description").toString(),
+			.hasIcon = object.value("has_icon").toBool(),
+		};
+		crl::on_main([=]() mutable { done(result); });
+	});
+}
+
+void FetchServerIcon(
+		const QString &host,
+		int port,
+		Fn<void(QByteArray data)> done) {
+	if (host.isEmpty() || port <= 0) {
+		done(QByteArray());
+		return;
+	}
+	crl::async([=, done = std::move(done)]() mutable {
+		const auto body = RawHttpGetBody(host, port, "/owpengram/server-icon");
+		crl::on_main([=]() mutable { done(body.value_or(QByteArray())); });
+	});
+}
+
+void RefreshServersInfo() {
+	// Both are plain statics rather than captured state because every
+	// FetchServerInfo/FetchServerIcon callback lands back on the main
+	// thread, so this needs no synchronisation -- and a round left
+	// half-finished by an unreachable server must not wedge the flag, hence
+	// the counter is decremented on every outcome including failure.
+	static auto running = false;
+	static auto remaining = 0;
+	if (running) {
+		return;
+	}
+
+	auto targets = std::vector<Server>();
+	for (const auto &server : ListServers()) {
+		// Telegram is not an OwpenGram backend and serves no
+		// /owpengram/server-info -- asking would just time out.
+		if (server.isTelegram || !server.valid()) {
+			continue;
+		}
+		targets.push_back(server);
+	}
+	if (targets.empty()) {
+		return;
+	}
+
+	running = true;
+	remaining = int(targets.size());
+	const auto finished = [] {
+		if (--remaining <= 0) {
+			running = false;
+		}
+	};
+	for (const auto &server : targets) {
+		const auto host = server.host;
+		const auto port = server.port;
+		FetchServerInfo(host, port, [=](
+				std::optional<ServerInfoFetchResult> result) {
+			if (!result) {
+				finished();
+				return;
+			}
+			// result->rsaPublicKeyPem and result->dcId are deliberately
+			// ignored: this path must never be able to move a server or
+			// change the key its handshake is checked against.
+			const auto name = result->name;
+			const auto description = result->description;
+			if (!result->hasIcon) {
+				// Explicit "no icon" -- clears one previously fetched from
+				// this server, so deleting it there deletes it here.
+				ApplyFetchedIdentity(
+					server,
+					name,
+					description,
+					QString(),
+					false);
+				finished();
+				return;
+			}
+			FetchServerIcon(host, port, [=](QByteArray data) {
+				auto logoPath = QString();
+				if (const auto saved = SaveFetchedServerLogo(
+						server.id,
+						data)) {
+					logoPath = *saved;
+				}
+				// hasIcon stays true even when the download failed and
+				// logoPath is empty: the server does have an icon, this
+				// round just did not get it, so keep the stored one.
+				ApplyFetchedIdentity(
+					server,
+					name,
+					description,
+					logoPath,
+					true);
+				finished();
+			});
+		});
+	}
 }
 
 } // namespace Owpengram

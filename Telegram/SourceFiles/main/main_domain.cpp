@@ -21,9 +21,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mtproto/facade.h"
 #include "mtproto/mtp_instance.h"
 #include "owpengram/owpengram_servers.h"
-#include "boxes/abstract_box.h"
-#include "boxes/owpengram_connecting_box.h"
-#include "ui/toast/toast.h"
 #include "storage/storage_domain.h"
 #include "storage/storage_account.h"
 #include "storage/localstorage.h"
@@ -378,7 +375,11 @@ void Domain::closeAccountWindows(not_null<Main::Account*> account) {
 			another = other;
 		}
 	}
-	if (another) {
+	// Only steal the active slot if the account that just logged out was
+	// actually the one showing -- logging out a background account (e.g.
+	// from the account switcher without switching to it first) must not
+	// silently jump the user to a different account.
+	if (another && _active.current() == account.get()) {
 		activate(another);
 	}
 }
@@ -404,6 +405,19 @@ bool Domain::removePasscodeIfEmpty() {
 
 void Domain::removeRedundantAccounts() {
 	Expects(started());
+
+	for (const auto &one : _accounts) {
+		if (one.account->destroyingSession()) {
+			// We were invoked from a crl::on_main drain that a nested
+			// event dispatch started from inside that account's own
+			// destroySession(). Erasing it now would free the object
+			// under its own stack frame. Retry after unwinding.
+			crl::on_main(&Core::App(), [=] {
+				removeRedundantAccounts();
+			});
+			return;
+		}
+	}
 
 	const auto was = _accounts.size();
 	for (auto i = _accounts.begin(); i != _accounts.end();) {
@@ -444,69 +458,17 @@ void Domain::checkForLastProductionConfig(
 }
 
 void Domain::maybeActivate(not_null<Main::Account*> account) {
+	// Deliberately no connection guard here: switching accounts must be
+	// instant and never blocked on network state, so a self-hosted server
+	// that's temporarily offline still lets the user open that account and
+	// read whatever is already cached locally. Actual connection status
+	// resolves the normal way in the background afterward.
 	if (Core::App().separateWindowFor(account)) {
 		activate(account);
-		guardServerConnection(account);
 	} else {
 		Core::App().preventOrInvoke(crl::guard(account, [=] {
 			activate(account);
-			guardServerConnection(account);
 		}));
-	}
-}
-
-void Domain::guardServerConnection(not_null<Main::Account*> account) {
-	// Only authorized accounts have a live MTP instance to wait on.
-	if (!account->sessionExists()) {
-		return;
-	}
-	auto &mtp = account->mtp();
-	if (mtp.dcstate(mtp.mainDcId()) == MTP::ConnectedState) {
-		return; // Already connected: switch instantly, no modal needed.
-	}
-	const auto server = Owpengram::CurrentServerForAccount(account);
-	const auto box = Ui::show(Box<ConnectingBox>());
-	Owpengram::WaitForServerConnection(
-		account,
-		server,
-		crl::guard(account, [=](bool ok) {
-			if (box) {
-				box->closeBox();
-			}
-			if (!ok) {
-				switchToFallbackAccount(account);
-			}
-		}));
-}
-
-void Domain::switchToFallbackAccount(not_null<Main::Account*> failed) {
-	// Prefer the official Telegram account, otherwise any connected account.
-	Main::Account *telegram = nullptr;
-	Main::Account *anyConnected = nullptr;
-	for (const auto &one : _accounts) {
-		const auto raw = one.account.get();
-		if (raw == failed.get() || !raw->sessionExists()) {
-			continue;
-		}
-		auto &mtp = raw->mtp();
-		if (mtp.dcstate(mtp.mainDcId()) != MTP::ConnectedState) {
-			continue;
-		}
-		if (!anyConnected) {
-			anyConnected = raw;
-		}
-		if (Owpengram::CurrentServerForAccount(raw).isTelegram) {
-			telegram = raw;
-			break;
-		}
-	}
-	const auto target = telegram ? telegram : anyConnected;
-	if (target) {
-		Ui::Toast::Show(
-			u"Connection failed — switched to a working account."_q);
-		activate(target);
-	} else {
-		Ui::Toast::Show(u"Connection failed."_q);
 	}
 }
 

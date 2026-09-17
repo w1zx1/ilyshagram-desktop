@@ -50,8 +50,8 @@ IDI_ICON1               ICON                    "..\\OwpenGram\\art\\icon256.ico
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION ILYSHA_FILEVERSION
- PRODUCTVERSION ILYSHA_PRODUCTVERSION
+ FILEVERSION 7,2,2,0
+ PRODUCTVERSION 7,2,2,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -67,12 +67,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             // NOTE: These values should match Branding::CompanyName and Branding::AppName in core/branding.h
-            VALUE "CompanyName", "ilyshaGram"
-            VALUE "FileDescription", "ilyshaGram Desktop"
-            VALUE "FileVersion", ILYSHA_VERSION_STR
+            VALUE "CompanyName", "OwpenGram"
+            VALUE "FileDescription", "OwpenGram Desktop"
+            VALUE "FileVersion", "7.2.2.0"
             VALUE "LegalCopyright", "Copyright (C) 2014-2026"
-            VALUE "ProductName", "ilyshaGram Desktop"
-            VALUE "ProductVersion", ILYSHA_VERSION_STR
+            VALUE "ProductName", "OwpenGram Desktop"
+            VALUE "ProductVersion", "7.2.2.0"
         END
     END
     BLOCK "VarFileInfo"
