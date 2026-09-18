@@ -62,7 +62,7 @@ private:
 
 	object_ptr<Ui::RpWidget> _logo;
 	object_ptr<Ui::FlatLabel> _name;
-	object_ptr<Ui::FlatLabel> _endpoint;
+	object_ptr<Ui::FlatLabel> _description;
 	object_ptr<Ui::FlatLabel> _status;
 	object_ptr<Ui::FlatLabel> _latency;
 	object_ptr<Ui::RoundButton> _joinButton;
@@ -83,14 +83,16 @@ ServerRow::ServerRow(
 , _join(std::move(join))
 , _logo(this)
 , _name(this, _server.name, st::introServerRowName)
-, _endpoint(
+, _description(
 	this,
-	tr::lng_owpengram_server_endpoint_short(
-		tr::now,
-		lt_host,
-		_server.host,
-		lt_port,
-		QString::number(_server.port)),
+	_server.description.isEmpty()
+		? tr::lng_owpengram_server_endpoint_short(
+			tr::now,
+			lt_host,
+			_server.host,
+			lt_port,
+			QString::number(_server.port))
+		: _server.description,
 	st::introServerRowEndpoint)
 , _status(this, tr::lng_owpengram_server_checking(tr::now), st::introServerRowStatus)
 , _latency(this, QString(), st::introServerRowLatency)
@@ -167,7 +169,7 @@ ServerRow::ServerRow(
 	}, _logo->lifetime());
 
 	_name->setAttribute(Qt::WA_TransparentForMouseEvents);
-	_endpoint->setAttribute(Qt::WA_TransparentForMouseEvents);
+	_description->setAttribute(Qt::WA_TransparentForMouseEvents);
 	_status->setAttribute(Qt::WA_TransparentForMouseEvents);
 	_latency->setAttribute(Qt::WA_TransparentForMouseEvents);
 
@@ -255,12 +257,12 @@ void ServerRow::updateLayout() {
 	const auto infoWidth = std::max(infoRight - infoLeft, 1);
 
 	_name->resizeToWidth(infoWidth);
-	_endpoint->resizeToWidth(infoWidth);
+	_description->resizeToWidth(infoWidth);
 
-	const auto textBlockHeight = _name->height() + 3 + _endpoint->height();
+	const auto textBlockHeight = _name->height() + 3 + _description->height();
 	const auto textTop = (height() - textBlockHeight) / 2;
 	_name->moveToLeft(infoLeft, textTop);
-	_endpoint->moveToLeft(infoLeft, textTop + _name->height() + 3);
+	_description->moveToLeft(infoLeft, textTop + _name->height() + 3);
 
 	_logo->moveToLeft(
 		padding.left(),
