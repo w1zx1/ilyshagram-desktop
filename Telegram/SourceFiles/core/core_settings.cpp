@@ -427,6 +427,7 @@ QByteArray Settings::serialize() const {
 	size += sizeof(qint32) // _audioPlaybackSpeed
 		+ sizeof(qint32) // _mediaGridZoomStep
 		+ sizeof(qint32) // _pullToNextChannel
+		+ sizeof(qint32) // _discordRpcEnabled
 		+ sizeof(qint32); // _chatFiltersTabsMode
 
 	auto result = QByteArray();
@@ -604,6 +605,7 @@ QByteArray Settings::serialize() const {
 		stream << qint32(SerializePlaybackSpeed(_audioPlaybackSpeed.current()));
 		stream << qint32(_mediaGridZoomStep);
 		stream << qint32(_pullToNextChannel.current() ? 1 : 0);
+		stream << qint32(_discordRpcEnabled ? 1 : 0);
 		stream << qint32(_chatFiltersTabsMode.current());
 	}
 
@@ -1132,6 +1134,9 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	}
 	if (!stream.atEnd()) {
 		stream >> pullToNextChannel;
+	}
+	if (!stream.atEnd()) {
+		stream >> discordRpcEnabled;
 	}
 	if (!stream.atEnd()) {
 		stream >> chatFiltersTabsMode;

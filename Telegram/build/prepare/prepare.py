@@ -62,6 +62,7 @@ optionsList = [
     'skip-release',
     'build-stackwalk',
     'qt-asserts',
+    'fetch',
 ]
 options = []
 runCommand = []
@@ -603,7 +604,11 @@ stage('patches', """
     git clone https://github.com/desktop-app/patches.git
     cd patches
     git checkout 73a88cdaa13995c8666c956b80e2129ee9b6b34d
-mac:
+    win:
+    bash -c "sed -i 's|FullExecPath=$PWD|FullExecPath=$(cd \"$(dirname \"$0\")\"; pwd)/../ffmpeg|' build_ffmpeg_win.sh"
+    win:
+    bash -c "sed -i 's|export PKG_CONFIG_PATH=\"$FullExecPath/../local/lib/pkgconfig:$PKG_CONFIG_PATH\"|export PKG_CONFIG_PATH=\"$FullExecPath/../local/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}\"|' build_ffmpeg_win.sh"
+    mac:
     git clone https://github.com/desktop-app/qt6_highsierra_patches.git qt6_highsierra
     cd qt6_highsierra
     git checkout 4aae812a405f47553e001faf566de572d3eccd16
