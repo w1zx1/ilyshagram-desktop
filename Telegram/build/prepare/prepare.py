@@ -101,6 +101,7 @@ environment = {
     'THIRDPARTY_DIR': thirdPartyDir,
     'PATH_PREFIX': pathPrefix,
     'CMAKE_GENERATOR': 'Ninja Multi-Config',
+    'PREPARE_DIR': scriptPath,
 }
 if (win32):
     environment.update({
@@ -134,9 +135,15 @@ ignoreInCacheForThirdParty = [
     'X8664',
 ]
 
+ignoreInCacheKeys = [
+    'PREPARE_DIR',
+]
+
 environmentKeyString = ''
 envForThirdPartyKeyString = ''
 for key in environment:
+    if key in ignoreInCacheKeys:
+        continue
     part = key + '=' + environment[key] + ';'
     environmentKeyString += part
     if not key in ignoreInCacheForThirdParty:
@@ -604,11 +611,9 @@ stage('patches', """
     git clone https://github.com/desktop-app/patches.git
     cd patches
     git checkout 73a88cdaa13995c8666c956b80e2129ee9b6b34d
-    win:
-    bash -c "sed -i 's|FullExecPath=$PWD|FullExecPath=$(cd \"$(dirname \"$0\")\"; pwd)/../ffmpeg|' build_ffmpeg_win.sh"
-    win:
-    bash -c "sed -i 's|export PKG_CONFIG_PATH=\"$FullExecPath/../local/lib/pkgconfig:$PKG_CONFIG_PATH\"|export PKG_CONFIG_PATH=\"$FullExecPath/../local/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}\"|' build_ffmpeg_win.sh"
-    mac:
+win:
+    python "%PREPARE_DIR%\\fix_ffmpeg_win.py"
+mac:
     git clone https://github.com/desktop-app/qt6_highsierra_patches.git qt6_highsierra
     cd qt6_highsierra
     git checkout 4aae812a405f47553e001faf566de572d3eccd16
@@ -632,7 +637,6 @@ win:
         mingw-w64-x86_64-nasm ^
         mingw-w64-x86_64-perl ^
         mingw-w64-x86_64-pkgconf
-    powershell -Command "iwr -OutFile ./nasm216.zip https://www.nasm.us/pub/nasm/releasebuilds/2.16.01/win64/nasm-2.16.01-win64.zip; Expand-Archive -Force ./nasm216.zip ./nasm216; Copy-Item -Force (Get-ChildItem -Path ./nasm216 -Recurse -Filter nasm.exe | Select-Object -First 1).FullName ./msys64/mingw64/bin/nasm.exe; del nasm216.zip; rmdir /S /Q nasm216"
 """, 'ThirdParty')
 
 stage('python', """
