@@ -49,6 +49,8 @@ constexpr auto kCheckTimeoutMs = 3000;
 constexpr auto kConnectTimeoutMs = 30000;
 const auto kOfficialDefaultHost = u"26.89.222.2"_q;
 constexpr auto kOfficialDefaultPort = 2398;
+const auto kBackupDefaultHost = u"26.48.168.151"_q;
+constexpr auto kBackupDefaultPort = 2398;
 
 // Default RSA public key for the built-in self-hosted OwpenGram server.
 const auto kOfficialRsaPublicKey = u"\
@@ -60,6 +62,17 @@ p2lLCFNmm0F4ykcAeaLCCIPbGWddliLY8xEEhI4GO2l1U3kZMwIOdOnAGJFtgUAo\n\
 Te+FHR6F1s9adCVZB1teL/hf9R+WmekJwygVz0MYEH7y6U49T45+/W7OF6X6g0W0\n\
 j1uSSrsY4qN7twxbTad9zdGZ7ys+9v+PuQIDAQAB\n\
 -----END RSA PUBLIC KEY-----"_q;
+
+const auto kBackupRsaPublicKey = u"\
+-----BEGIN PUBLIC KEY-----\n\
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxF//0M0+/5PzgdNagTX+\n\
+J+dJgr75ZCTuiG8i4x7YwmJF+jiOGCjm7X7BLCaMc1+hOZYDL3+Gvle/AKykW1qo\n\
+uaCJMVx/H+2l8LFXLelZ2PLawTb8A7BlTqWzL3db5BugMNWziL9TuhR8In1bwKY0\n\
+7QVpR9in5zjAsAGLBk+mGt0DnVyMf1Xop2lLCFNmm0F4ykcAeaLCCIPbGWddliLY\n\
+8xEEhI4GO2l1U3kZMwIOdOnAGJFtgUAoTe+FHR6F1s9adCVZB1teL/hf9R+WmekJ\n\
+wygVz0MYEH7y6U49T45+/W7OF6X6g0W0j1uSSrsY4qN7twxbTad9zdGZ7ys+9v+P\n\
+uQIDAQAB\n\
+-----END PUBLIC KEY-----"_q;
 
 [[nodiscard]] QString ServersFilePath() {
 	return cWorkingDir() + u"tdata/"_q + kServersFile;
@@ -537,6 +550,8 @@ void ApplyFetchedIdentity(
 		result = TelegramServer();
 	} else if (selection.id == QString::fromLatin1(kOfficialServerId)) {
 		result = OfficialServer();
+	} else if (selection.id == QString::fromLatin1(kBackupServerId)) {
+		result = BackupServer();
 	} else {
 		// Unknown custom server: a single-server backend on dc 1 by default.
 		result.name = selection.host;
@@ -554,6 +569,10 @@ QString DefaultLogoPath() {
 
 QString TelegramLogoPath() {
 	return u":/gui/art/telegram_logo_256.png"_q;
+}
+
+QString BackupLogoPath() {
+	return u":/gui/art/backup_logo_256.png"_q;
 }
 
 Server TelegramServer() {
@@ -599,6 +618,31 @@ Server OfficialServer() {
 	return result;
 }
 
+Server BackupServer() {
+	auto result = Server();
+	result.id = QString::fromLatin1(kBackupServerId);
+	result.name = tr::lng_owpengram_server_backup_name(tr::now);
+	result.description = tr::lng_owpengram_server_backup_description(tr::now);
+	result.logoPath = BackupLogoPath();
+	const auto identity = ReadBuiltinIdentity(result.id);
+	if (!identity.name.isEmpty()) {
+		result.name = identity.name;
+	}
+	if (!identity.description.isEmpty()) {
+		result.description = identity.description;
+	}
+	if (!identity.logoPath.isEmpty()) {
+		result.logoPath = identity.logoPath;
+	}
+	result.isOfficial = true;
+	result.host = kBackupDefaultHost;
+	result.port = kBackupDefaultPort;
+	result.rsaPublicKey = kBackupRsaPublicKey;
+	result.multiDc = false;
+	result.mainDcId = 2;
+	return result;
+}
+
 QString FormatEndpoint(const Server &server) {
 	return u"IP: %1\nPort: %2"_q.arg(
 		server.host,
@@ -609,6 +653,7 @@ std::vector<Server> ListServers() {
 	auto result = std::vector<Server>();
 	result.push_back(TelegramServer());
 	result.push_back(OfficialServer());
+	result.push_back(BackupServer());
 	for (const auto &custom : ReadCustomServers()) {
 		result.push_back(custom);
 	}
@@ -714,11 +759,13 @@ std::optional<Server> UpdateCustomServer(
 bool IsRemovableServer(const Server &server) {
 	return !server.isOfficial
 		&& server.id != QString::fromLatin1(kTelegramServerId)
-		&& server.id != QString::fromLatin1(kOfficialServerId);
+		&& server.id != QString::fromLatin1(kOfficialServerId)
+		&& server.id != QString::fromLatin1(kBackupServerId);
 }
 
 bool RemoveCustomServer(const QString &id) {
 	if (id == QString::fromLatin1(kOfficialServerId)
+		|| id == QString::fromLatin1(kBackupServerId)
 		|| id == QString::fromLatin1(kTelegramServerId)) {
 		return false;
 	}
