@@ -8,6 +8,7 @@
     <file alias="art/logo_256.png">../../OwpenGram/art/logo_256.png</file>
     <file alias="art/logo_256_debug.png">../../OwpenGram/art/icon256_debug.png</file>
     <file alias="art/telegram_logo_256.png">../../OwpenGram/art/telegram_logo_256.png</file>
+    <file alias="art/backup_logo_256.png">../../OwpenGram/art/backup_logo_256.png</file>
     <file alias="art/logo_256_no_margin.png">../../OwpenGram/art/logo_256_no_margin.png</file>
     <file alias="art/logo_qr_big.png">../../OwpenGram/icons/logo_1024_qr_white.png</file>
     <file alias="art/themeimage.jpg">../../art/themeimage.jpg</file>

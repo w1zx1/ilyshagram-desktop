@@ -8754,6 +8754,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_owpengram_server_telegram_description" = "Официальное облако Telegram. Войдите через свой аккаунт Telegram.";
 "lng_owpengram_server_official_name" = "Основной";
 "lng_owpengram_server_official_description" = "Основной сервер ilyshaGram";
+"lng_owpengram_server_backup_name" = "Резервный";
+"lng_owpengram_server_backup_description" = "Резервный сервер (fumaz0)";
 "lng_owpengram_server_add_title" = "Добавить сервер";
 "lng_owpengram_server_edit_title" = "Изменить сервер";
 "lng_owpengram_server_logo" = "Значок сервера (необязательно)";

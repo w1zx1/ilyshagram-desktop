@@ -29,6 +29,7 @@ class Config;
 namespace Owpengram {
 
 inline constexpr auto kOfficialServerId = "official";
+inline constexpr auto kBackupServerId = "backup";
 inline constexpr auto kTelegramServerId = "telegram";
 
 struct Server {
@@ -56,6 +57,7 @@ struct Server {
 
 [[nodiscard]] Server TelegramServer();
 [[nodiscard]] Server OfficialServer();
+[[nodiscard]] Server BackupServer();
 [[nodiscard]] std::vector<Server> ListServers();
 [[nodiscard]] std::optional<Server> FindServer(const QString &id);
 [[nodiscard]] std::optional<Server> AddCustomServer(
@@ -198,6 +200,7 @@ void RefreshServersInfo();
 
 [[nodiscard]] QString DefaultLogoPath();
 [[nodiscard]] QString TelegramLogoPath();
+[[nodiscard]] QString BackupLogoPath();
 [[nodiscard]] QString FormatEndpoint(const Server &server);
 
 } // namespace Owpengram
