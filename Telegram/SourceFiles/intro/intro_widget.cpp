@@ -36,7 +36,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/ui_utility.h"
 #include "boxes/abstract_box.h"
 #include "core/email_signup_phone.h"
-#include "core/update_checker.h"
+#include "core/github_updates.h"
 #include "core/application.h"
 #include "mtproto/mtproto_dc_options.h"
 #include "window/window_slide_animation.h"
@@ -172,18 +172,13 @@ Widget::Widget(
 
 	cSetPasswordRecovered(false);
 
-	if (!Core::UpdaterDisabled()) {
-		Core::UpdateChecker checker;
-		checker.start();
-		rpl::merge(
-			rpl::single(rpl::empty),
-			checker.isLatest(),
-			checker.failed(),
-			checker.ready()
-		) | rpl::on_next([=] {
-			checkUpdateStatus();
-		}, lifetime());
-	}
+	GithubUpdates::Start();
+	rpl::merge(
+		rpl::single(GithubUpdates::State::Idle),
+		GithubUpdates::StateChanged()
+	) | rpl::on_next([=] {
+		checkUpdateStatus();
+	}, lifetime());
 }
 
 rpl::producer<> Widget::showSettingsRequested() const {
@@ -320,9 +315,7 @@ void Widget::createLanguageLink() {
 }
 
 void Widget::checkUpdateStatus() {
-	Expects(!Core::UpdaterDisabled());
-
-	if (Core::UpdateChecker().state() == Core::UpdateChecker::State::Ready) {
+	if (GithubUpdates::IsReady()) {
 		if (_update) return;
 		_update.create(
 			this,
@@ -337,8 +330,7 @@ void Widget::checkUpdateStatus() {
 		const auto stepHasCover = getStep()->hasCover();
 		_update->toggle(!stepHasCover, anim::type::instant);
 		_update->entity()->setClickedCallback([] {
-			Core::checkReadyUpdate();
-			Core::Restart();
+			GithubUpdates::ApplyPendingUpdate();
 		});
 	} else {
 		if (!_update) return;

@@ -77,7 +77,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/qthelp_regex.h"
 #include "base/options.h"
 #include "mtproto/mtproto_dc_options.h"
-#include "core/update_checker.h"
+#include "core/github_updates.h"
 #include "core/shortcuts.h"
 #include "core/application.h"
 #include "core/click_handler_types.h"
@@ -444,10 +444,7 @@ MainWidget::MainWidget(
 	}
 	orderWidgets();
 
-	if (!Core::UpdaterDisabled()) {
-		Core::UpdateChecker checker;
-		checker.start();
-	}
+	GithubUpdates::Start();
 
 	cSetOtherOnline(0);
 
