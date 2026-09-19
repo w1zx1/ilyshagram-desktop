@@ -25,6 +25,6 @@ constexpr auto AppName = Branding::AppName;
 constexpr auto AppFile = "Telegram"_cs;
 constexpr auto AppVersion = 7002002;
 constexpr auto AppVersionStr = "7.2.2";
-constexpr auto IlyshaVersionStr = "0.1.1";
+constexpr auto IlyshaVersionStr = "0.1.2";
 constexpr auto AppBetaVersion = false;
 constexpr auto AppAlphaVersion = TDESKTOP_ALPHA_VERSION;
