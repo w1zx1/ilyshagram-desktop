@@ -18,6 +18,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtGui/QGuiApplication>
 #include <QtGui/QPalette>
 
+#ifdef Q_OS_WIN
+#include "platform/win/windows_dlls.h"
+#endif // Q_OS_WIN
+
 namespace Window {
 namespace Theme {
 namespace {
@@ -106,6 +110,21 @@ style::colorizer::Color cColor(std::string_view hex) {
 	return style::colorizer::Color{ hue, saturation, value };
 }
 
+#if defined Q_OS_WIN && QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+[[nodiscard]] std::optional<QColor> DwmAccentColor() {
+	auto colorization = DWORD(0);
+	auto opaque = BOOL(FALSE);
+	if (DwmGetColorizationColor(&colorization, &opaque) != S_OK) {
+		return std::nullopt;
+	}
+	// DwmGetColorizationColor packs the color as 0xAARRGGBB.
+	return QColor(
+		int((colorization >> 16) & 0xFF),
+		int((colorization >> 8) & 0xFF),
+		int(colorization & 0xFF));
+}
+#endif // Q_OS_WIN && Qt < 6.0.0
+
 } // namespace
 
 style::colorizer ColorizerFrom(
@@ -182,7 +201,11 @@ style::colorizer ColorizerFrom(
 std::optional<QColor> SystemAccentColor() {
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 	if (Platform::IsWindows() && Platform::IsWindows8OrGreater()) {
+#ifdef Q_OS_WIN
+		return DwmAccentColor();
+#else // Q_OS_WIN
 		return std::nullopt;
+#endif // Q_OS_WIN
 	}
 #endif // Qt < 6.0.0
 	const auto accent = QPalette().color(QPalette::Highlight);
