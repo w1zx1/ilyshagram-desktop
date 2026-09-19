@@ -600,6 +600,8 @@ PRIVATE
     core/external_control.h
     core/file_utilities.cpp
     core/file_utilities.h
+    core/github_updates.cpp
+    core/github_updates.h
     core/launcher.cpp
     core/launcher.h
     core/local_url_handlers.cpp

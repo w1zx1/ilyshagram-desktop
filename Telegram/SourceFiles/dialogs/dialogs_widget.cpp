@@ -63,7 +63,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "chat_helpers/message_field.h"
 #include "core/application.h"
 #include "core/ui_integration.h"
-#include "core/update_checker.h"
+#include "core/github_updates.h"
 #include "core/shortcuts.h"
 #include "window/window_controller.h"
 #include "window/window_session_controller.h"
@@ -646,17 +646,12 @@ Widget::Widget(
 		[=] { searchCursorMoved(); },
 		Qt::QueuedConnection); // So getLastText() works already.
 
-	if (!Core::UpdaterDisabled()) {
-		Core::UpdateChecker checker;
-		rpl::merge(
-			rpl::single(rpl::empty),
-			checker.isLatest(),
-			checker.failed(),
-			checker.ready()
-		) | rpl::on_next([=] {
-			checkUpdateStatus();
-		}, lifetime());
-	}
+	rpl::merge(
+		rpl::single(GithubUpdates::State::Idle),
+		GithubUpdates::StateChanged()
+	) | rpl::on_next([=] {
+		checkUpdateStatus();
+	}, lifetime());
 
 	_cancelSearch->setClickedCallback([=] {
 		cancelSearch({ .jumpBackToSearchedChat = true });
@@ -2535,14 +2530,11 @@ QPixmap Widget::grabForFolderSlideAnimation() {
 }
 
 void Widget::checkUpdateStatus() {
-	Expects(!Core::UpdaterDisabled());
-
 	if (_layout == Layout::Child) {
 		return;
 	}
 
-	using Checker = Core::UpdateChecker;
-	if (Checker().state() == Checker::State::Ready) {
+	if (GithubUpdates::IsReady()) {
 		if (_updateTelegram) {
 			return;
 		}
@@ -2555,8 +2547,7 @@ void Widget::checkUpdateStatus() {
 			true);
 		_updateTelegram->show();
 		_updateTelegram->setClickedCallback([] {
-			Core::checkReadyUpdate();
-			Core::Restart();
+			GithubUpdates::ApplyPendingUpdate();
 		});
 		if (_connecting) {
 			_connecting->raise();

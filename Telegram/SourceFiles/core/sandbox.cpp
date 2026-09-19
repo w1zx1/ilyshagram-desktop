@@ -21,6 +21,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/launcher.h"
 #include "core/local_url_handlers.h"
 #include "core/update_checker.h"
+#include "core/github_updates.h"
 #include "core/deadlock_detector.h"
 #include "base/timer.h"
 #include "base/concurrent_timer.h"
@@ -438,6 +439,13 @@ void Sandbox::socketError(QLocalSocket::LocalSocketError e) {
 		DEBUG_LOG(("Sandbox Info: installing update instead of starting app..."));
 		return Quit();
 	}
+
+#ifdef Q_OS_WIN
+	if (GithubUpdates::CheckPendingAtStartup()) {
+		DEBUG_LOG(("Sandbox Info: installing pending GitHub update..."));
+		return Quit();
+	}
+#endif // Q_OS_WIN
 
 	if (cQuit()) {
 		return Quit();
