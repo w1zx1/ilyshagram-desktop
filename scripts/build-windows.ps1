@@ -113,6 +113,24 @@ function Find-VcVars {
     return ($found | Sort-Object -Descending | Select-Object -First 1)
 }
 
+function Get-BuildJobs([string]$Configuration) {
+    # Release with LTO and a huge PCH needs ~4 GB per cl.exe, Debug ~1.5 GB.
+    # Running one job per core blindly OOMs on machines with modest RAM
+    # (C1060/C3859/C1076), so derive the limit from installed memory.
+    $cores = [Environment]::ProcessorCount
+    try {
+        $ramGB = (Get-CimInstance Win32_ComputerSystem -ErrorAction Stop).TotalPhysicalMemory / 1GB
+    } catch {
+        Write-Host '[WARN] Could not read RAM size, using all cores.' -ForegroundColor Yellow
+        return $cores
+    }
+    $perJobGB = if ($Configuration -eq 'Release') { 4 } else { 1.5 }
+    $jobs = [math]::Floor(($ramGB - 3) / $perJobGB)
+    if ($jobs -lt 1) { $jobs = 1 }
+    if ($jobs -gt $cores) { $jobs = $cores }
+    return [int]$jobs
+}
+
 function Invoke-Vs([string]$Command, [string]$WorkingDirectory, [string]$Label) {
     if (-not $script:VcVars) { throw 'vcvars64 not resolved' }
 
@@ -250,7 +268,9 @@ try {
     Invoke-Vs -Command $configure -WorkingDirectory $TelegramDir -Label 'configure'
 
     Write-Step "MSBuild $Configuration"
-    $build = "msbuild `"$SolutionPath`" /t:Telegram /p:Configuration=$Configuration /m /nr:false /v:minimal"
+    $jobs = Get-BuildJobs -Configuration $Configuration
+    Write-Ok "Parallel jobs: $jobs (cores: $([Environment]::ProcessorCount))"
+    $build = "msbuild `"$SolutionPath`" /t:Telegram /p:Configuration=$Configuration /m:$jobs /nr:false /v:minimal"
     Invoke-Vs -Command $build -WorkingDirectory $RepoRoot -Label 'build'
 
     foreach ($name in @('ilyshaGram.exe', 'OwpenGram.exe', 'Telegram.exe')) {
