@@ -213,7 +213,14 @@ void Stop() {
 }
 
 void UpdateDefaultPresence() {
-	const auto details = u"Using "_q + QString(Branding::ShortAppName.utf16());
+#ifdef _DEBUG
+	const auto buildType = u" Debug"_q;
+#else // _DEBUG
+	const auto buildType = QString();
+#endif // _DEBUG
+	const auto details = u"Using "_q
+		+ QString(Branding::ShortAppName.utf16())
+		+ buildType;
 	const auto state = u"v%1 (Telegram %2)"_q
 		.arg(QString::fromLatin1(IlyshaVersionStr))
 		.arg(QString::fromLatin1(AppVersionStr));
