@@ -21,6 +21,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/download_path_box.h"
 #include "core/application.h"
 #include "core/core_settings.h"
+#include "core/github_updates.h"
 #include "discord/discord_presence.h"
 #include "core/file_utilities.h"
 #include "core/launcher.h"
@@ -601,6 +602,18 @@ void BuildSystemIntegrationSection(SectionBuilder &builder) {
 			}
 		}, discordRpc->lifetime());
 	}
+
+#ifdef Q_OS_WIN
+	builder.addButton({
+		.id = u"advanced/check_for_updates"_q,
+		.title = tr::lng_settings_check_now(),
+		.icon = { &st::menuIconDownload },
+		.onClick = [=] {
+			GithubUpdates::CheckNow();
+		},
+		.keywords = { u"update"_q, u"check"_q, u"version"_q, u"new"_q },
+	});
+#endif // Q_OS_WIN
 
 #ifndef OS_MAC_STORE
 	const auto roundIconEnabled = [=] {

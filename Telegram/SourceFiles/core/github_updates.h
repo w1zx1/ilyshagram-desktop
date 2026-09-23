@@ -23,6 +23,10 @@ enum class State {
 void Start();
 void Stop();
 
+// Runs a check right away, outside the hourly schedule.
+// Ignored while a check or a download is already in progress.
+void CheckNow();
+
 [[nodiscard]] rpl::producer<State> StateChanged();
 [[nodiscard]] bool IsReady();
 

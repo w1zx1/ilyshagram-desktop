@@ -352,6 +352,20 @@ void Stop() {
 #endif // Q_OS_WIN
 }
 
+void CheckNow() {
+#ifdef Q_OS_WIN
+	if (!Manager) {
+		Manager = std::make_unique<QNetworkAccessManager>();
+	}
+	Started = true;
+	if (CurrentState == State::Checking
+		|| CurrentState == State::Downloading) {
+		return;
+	}
+	Check();
+#endif // Q_OS_WIN
+}
+
 rpl::producer<State> StateChanged() {
 	return StateEvents.events();
 }
