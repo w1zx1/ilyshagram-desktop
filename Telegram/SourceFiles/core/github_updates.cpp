@@ -140,7 +140,7 @@ void ClearPending() {
 }
 
 #ifdef Q_OS_WIN
-constexpr auto kApiUrl = "https://api.github.com/w1zx1/ilyshagram-desktop/releases/latest";
+constexpr auto kApiUrl = "https://api.github.com/repos/w1zx1/ilyshagram-desktop/releases/latest";
 constexpr auto kAssetName = "ilyshagram-setup.exe";
 constexpr auto kUserAgent = "ilyshaGram";
 constexpr auto kInstallDelaySeconds = 5;
@@ -346,6 +346,7 @@ void Stop() {
 #ifdef Q_OS_WIN
 	CheckTimer.cancel();
 	CancelActiveReply();
+	Manager.reset();
 	if (CurrentState != State::Ready) {
 		QFile::remove(PendingExePath());
 	}
