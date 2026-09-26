@@ -18,6 +18,7 @@ enum class State {
 	Downloading,
 	Ready,
 	Failed,
+	UpToDate,
 };
 
 void Start();

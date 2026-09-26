@@ -53,6 +53,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/settings_faq_suggestions.h"
 #include "settings/sections/settings_credits.h"
 #include "settings/sections/settings_folders.h"
+#include "settings/sections/settings_ilysha.h"
 #include "settings/sections/settings_information.h"
 #include "settings/sections/settings_notifications.h"
 #include "settings/settings_power_saving.h"
@@ -66,8 +67,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/controls/userpic_button.h"
 #include "ui/layers/generic_box.h"
 #include "ui/new_badges.h"
+#include "ui/painter.h"
 #include "ui/power_saving.h"
 #include "ui/rect.h"
+#include "ui/rp_widget.h"
 #include "ui/text/format_values.h"
 #include "ui/text/text_utilities.h"
 #include "ui/toast/toast.h"
@@ -364,6 +367,39 @@ void BuildSectionButtons(SectionBuilder &builder) {
 	const auto session = builder.session();
 	const auto controller = builder.controller();
 	const auto showOther = builder.showOther();
+
+	if (const auto ilysha = builder.addSectionButton({
+		.title = tr::lng_settings_ilysha(),
+		.targetSection = IlyshaId(),
+		.keywords = { u"ilysha"_q, u"ilyshagram"_q, u"discord"_q, u"rpc"_q, u"update"_q },
+	})) {
+		const auto &st = ilysha->st();
+		const auto side = st::menuIconProfile.width();
+		const auto ratio = style::DevicePixelRatio();
+		auto pixmap = QPixmap(u":/gui/art/ilysha_menu_icon.png"_q).scaled(
+			side * ratio,
+			side * ratio,
+			Qt::IgnoreAspectRatio,
+			Qt::SmoothTransformation);
+		pixmap.setDevicePixelRatio(ratio);
+		const auto icon = Ui::CreateChild<Ui::RpWidget>(ilysha);
+		icon->setAttribute(Qt::WA_TransparentForMouseEvents);
+		icon->resize(side, side);
+		icon->show();
+		ilysha->sizeValue() | rpl::on_next([=](QSize size) {
+			icon->moveToLeft(
+				st.iconLeft,
+				(size.height() - side) / 2,
+				size.width());
+		}, icon->lifetime());
+		icon->paintRequest() | rpl::on_next([=] {
+			auto p = QPainter(icon);
+			p.drawPixmap(0, 0, pixmap);
+		}, icon->lifetime());
+	}
+	builder.addSkip();
+	builder.addDivider();
+	builder.addSkip();
 
 	if (!session->supportMode()) {
 		builder.addSectionButton({
