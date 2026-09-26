@@ -10,6 +10,7 @@
     <file alias="art/telegram_logo_256.png">../../OwpenGram/art/telegram_logo_256.png</file>
     <file alias="art/backup_logo_256.png">../../OwpenGram/art/backup_logo_256.png</file>
     <file alias="art/logo_256_no_margin.png">../../OwpenGram/art/logo_256_no_margin.png</file>
+    <file alias="art/ilysha_menu_icon.png">../../OwpenGram/art/icon32.png</file>
     <file alias="art/logo_qr_big.png">../../OwpenGram/icons/logo_1024_qr_white.png</file>
     <file alias="art/themeimage.jpg">../../art/themeimage.jpg</file>
     <file alias="art/round_placeholder.jpg">../../art/round_placeholder.jpg</file>

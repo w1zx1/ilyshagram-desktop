@@ -251,7 +251,7 @@ void HandleReleaseReply(QNetworkReply *reply) {
 	const auto object = document.object();
 	const auto tag = object.value(u"tag_name"_q).toString();
 	if (!IsTagNewer(tag, CurrentVersion())) {
-		SetState(State::Idle);
+		SetState(State::UpToDate);
 		ScheduleNext(kCheckInterval);
 		return;
 	}

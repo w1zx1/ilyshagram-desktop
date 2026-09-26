@@ -868,6 +868,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_settings_add_account_about" = "You can add up to four accounts with different phone numbers.";
 "lng_settings_peer_to_peer_about" = "Disabling peer-to-peer will relay all calls through ilyshaGram servers to avoid revealing your IP address, but may decrease audio and video quality.";
 "lng_settings_advanced" = "Advanced";
+"lng_settings_ilysha" = "Настройки ilyshaGram";
 "lng_settings_stickers_emoji" = "Stickers and emoji";
 "lng_settings_messages" = "Messages";
 "lng_settings_themes" = "Themes";
@@ -877,7 +878,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_settings_theme_night" = "Night";
 "lng_settings_theme_accent_title" = "Choose accent color";
 "lng_settings_theme_system_accent_color" = "System accent color";
-"lng_settings_discord_rpc" = "Show ilyshaGram in Discord";
+"lng_settings_discord_rpc" = "Показывать ilyshaGram в Discord";
 "lng_settings_data_storage" = "Data and storage";
 "lng_settings_information" = "Edit profile";
 "lng_settings_my_account" = "My Account";
