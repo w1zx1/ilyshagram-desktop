@@ -93,6 +93,9 @@ void SendActivity() {
 }
 
 void TryConnect() {
+	if (!Running || !Socket) {
+		return;
+	}
 	if (CandidateIndex >= Candidates.size()) {
 		Reconnect();
 		return;
@@ -101,6 +104,9 @@ void TryConnect() {
 }
 
 void Reconnect() {
+	if (!Running) {
+		return;
+	}
 	if (Socket && Socket->state() != QLocalSocket::UnconnectedState) {
 		Socket->abort();
 	}
@@ -116,15 +122,24 @@ void Reconnect() {
 }
 
 void OnConnected() {
+	if (!Running || !Socket) {
+		return;
+	}
 	SendHandshake();
 	SendActivity();
 }
 
 void OnDisconnected() {
+	if (!Running) {
+		return;
+	}
 	Reconnect();
 }
 
 void OnError() {
+	if (!Running || !Socket) {
+		return;
+	}
 	if (Socket->state() == QLocalSocket::ConnectedState) {
 		return;
 	}
@@ -133,6 +148,9 @@ void OnError() {
 }
 
 void OnReadyRead() {
+	if (!Running || !Socket) {
+		return;
+	}
 	Buffer.append(Socket->readAll());
 	while (Buffer.size() >= 8) {
 		quint32 opcode = 0;
@@ -205,11 +223,15 @@ void Stop() {
 		ReconnectTimer->stop();
 	}
 	if (Socket) {
-		Socket->disconnectFromServer();
+		Socket->disconnect();
+		Socket->abort();
 		Socket->deleteLater();
 		Socket = nullptr;
 	}
 	Buffer.clear();
+	PendingActivity.clear();
+	Candidates.clear();
+	CandidateIndex = 0;
 }
 
 void UpdateDefaultPresence() {
