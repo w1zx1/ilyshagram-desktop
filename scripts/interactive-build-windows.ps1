@@ -5,7 +5,7 @@
 
 .DESCRIPTION
   Patches server DC options, updates submodules, runs prepare/configure,
-  and optionally builds via MSBuild — inside the VS 2022 x64 toolchain environment.
+  and optionally builds via MSBuild - inside the VS 2022 x64 toolchain environment.
 #>
 [CmdletBinding()]
 param(
@@ -711,7 +711,7 @@ try {
 
     # First run wizard when no saved config
     if (-not (Test-Path $ConfigFile)) {
-        Write-WarnMsg 'No saved settings found — quick setup wizard.'
+        Write-WarnMsg 'No saved settings found - quick setup wizard.'
         $script:Cfg = Edit-ConfigInteractive $script:Cfg
     }
 

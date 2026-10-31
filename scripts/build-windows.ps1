@@ -45,7 +45,7 @@ function Get-ApiCredentials {
         }
     }
 
-    Write-Host '[WARN] api_credentials.local.ps1 not found — using TEST credentials.' -ForegroundColor Yellow
+    Write-Host '[WARN] api_credentials.local.ps1 not found - using TEST credentials.' -ForegroundColor Yellow
     Write-Host '       Copy api_credentials.local.ps1.example and add your api_id/api_hash for Telegram login.' -ForegroundColor Yellow
     return @{
         Id = $TestApiId
@@ -294,9 +294,9 @@ try {
                     }
                 }
                 if (-not $iscc) {
-                    Write-Err "ISCC not found (searched AppData, Program Files) — skipping installer. Install Inno Setup 6 or pass -NoInstaller."
+                    Write-Err "ISCC not found (searched AppData, Program Files) - skipping installer. Install Inno Setup 6 or pass -NoInstaller."
                 } elseif (-not (Test-Path $iss)) {
-                    Write-Err "Installer script not found: $iss — skipping installer."
+                    Write-Err "Installer script not found: $iss - skipping installer."
                 } else {
                     $psi = New-Object System.Diagnostics.ProcessStartInfo
                     $psi.FileName = $iscc
