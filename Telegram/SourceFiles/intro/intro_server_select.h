@@ -56,6 +56,8 @@ private:
 	const not_null<Ui::RpWidget*> _rowsContainer;
 	const not_null<Ui::FlatLabel*> _ownTitle;
 	const not_null<Ui::FlatLabel*> _ownDescription;
+	const not_null<Ui::FlatLabel*> _emptyLabel;
+	const not_null<Ui::RoundButton*> _retryButton;
 	object_ptr<Ui::RoundButton> _addServer;
 	base::Timer _statusTimer;
 };

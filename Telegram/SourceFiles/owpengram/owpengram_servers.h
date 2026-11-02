@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
+#include "base/basic_types.h"
 #include "base/flat_map.h"
 
 #include <rpl/event_stream.h>
@@ -18,6 +19,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtCore/QByteArray>
 #include <QtCore/QString>
 
+class QJsonObject;
+
 namespace Main {
 class Account;
 } // namespace Main
@@ -28,8 +31,6 @@ class Config;
 
 namespace Owpengram {
 
-inline constexpr auto kOfficialServerId = "official";
-inline constexpr auto kBackupServerId = "backup";
 inline constexpr auto kTelegramServerId = "telegram";
 
 struct Server {
@@ -42,6 +43,10 @@ struct Server {
 	QString logoPath;
 	bool isOfficial = false;
 	bool isTelegram = false;
+	// Listed by the operator's remote server list rather than created by the
+	// user: non-removable in the UI, and its removal there logs out every
+	// account still pointing at it.
+	bool managed = false;
 	// Multi-DC servers (Telegram) trust help.getConfig / the special loader to
 	// discover real alternate data-center addresses. Single-server backends
 	// (owpengram/MyTelegram/custom) are one physical machine, so every
@@ -56,9 +61,18 @@ struct Server {
 };
 
 [[nodiscard]] Server TelegramServer();
-[[nodiscard]] Server OfficialServer();
-[[nodiscard]] Server BackupServer();
 [[nodiscard]] std::vector<Server> ListServers();
+// Fills in the fields the operator's remote list leaves out (name,
+// description, logo) from the cosmetic identity the server reported over its
+// own /owpengram/server-info endpoint. Repo-provided values always win.
+[[nodiscard]] Server WithServerIdentity(Server server);
+[[nodiscard]] uint64 ServerKeyFingerprint(const QString &pem);
+[[nodiscard]] QJsonObject ServerToJson(const Server &server);
+[[nodiscard]] Server ServerFromJson(const QJsonObject &object);
+[[nodiscard]] std::optional<QString> SaveListServerLogo(
+	const QString &serverId,
+	const QByteArray &data);
+void RemoveServerLogoFile(const QString &logoPath);
 [[nodiscard]] std::optional<Server> FindServer(const QString &id);
 [[nodiscard]] std::optional<Server> AddCustomServer(
 	const QString &name,
@@ -92,6 +106,7 @@ struct Server {
 	int mainDcId = 0);
 [[nodiscard]] bool IsValidRsaPublicKeyPem(const QString &pem);
 [[nodiscard]] QString ResolveServerLogoPath(const QString &logoPath);
+[[nodiscard]] bool IsServerLogoPath(const QString &logoPath);
 [[nodiscard]] bool RemoveCustomServer(const QString &id);
 [[nodiscard]] bool IsRemovableServer(const Server &server);
 
@@ -124,6 +139,21 @@ void RestoreServerToAccount(not_null<Main::Account*> account);
 // at a server that no longer exists in the list from silently breaking.
 [[nodiscard]] std::vector<not_null<Main::Account*>> AccountsUsingServer(
 	const QString &serverId);
+
+// Accounts whose *saved* selection is exactly this server id. Unlike
+// AccountsUsingServer (which defaults a selection-less account to Telegram),
+// this never matches an account that never picked a server, so a removed
+// managed server cannot log out legacy accounts that were never on it.
+[[nodiscard]] std::vector<not_null<Main::Account*>> AccountsWithStoredServer(
+	const QString &serverId);
+
+// Rewrites the saved endpoint of every account on serverId and reconnects it
+// when the address of an otherwise unchanged server (same RSA key, same DC
+// config) moves. Does not touch authorization keys.
+void UpdateStoredServerEndpoint(
+	const QString &serverId,
+	const QString &host,
+	int port);
 
 // Stable key for grouping per-server local device state (currently: recent/frequently-used
 // custom emoji, see Core::Settings::recentEmojiForScope) by backend rather than by device. Two
@@ -198,9 +228,7 @@ void RefreshServersInfo();
 	const Server &server,
 	Fn<void(bool ok)> done);
 
-[[nodiscard]] QString DefaultLogoPath();
 [[nodiscard]] QString TelegramLogoPath();
-[[nodiscard]] QString BackupLogoPath();
 [[nodiscard]] QString FormatEndpoint(const Server &server);
 
 } // namespace Owpengram

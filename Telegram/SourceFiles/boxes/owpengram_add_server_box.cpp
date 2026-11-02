@@ -543,6 +543,11 @@ void AddServerBox::save() {
 		_address->setFocusFast();
 		return;
 	}
+	if (!multiDc && rsaPublicKey.isEmpty()) {
+		Ui::Toast::Show(tr::lng_owpengram_server_rsa_key_required(tr::now));
+		_rsaPublicKey->setFocusFast();
+		return;
+	}
 	if (!Owpengram::IsValidRsaPublicKeyPem(rsaPublicKey)) {
 		Ui::Toast::Show(tr::lng_owpengram_server_rsa_key_invalid(tr::now));
 		_rsaPublicKey->setFocusFast();

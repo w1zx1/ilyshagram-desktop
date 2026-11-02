@@ -1652,6 +1652,8 @@ PRIVATE
     mtproto/mtp_instance.h
     owpengram/owpengram_servers.cpp
     owpengram/owpengram_servers.h
+    owpengram/owpengram_server_list.cpp
+    owpengram/owpengram_server_list.h
     owpengram/owpengram_lang.cpp
     owpengram/owpengram_lang.h
     mtproto/proxy_check.cpp

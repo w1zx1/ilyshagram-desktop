@@ -199,6 +199,8 @@ introServerListBottom: 20px;
 introServerListMinHeight: 80px;
 introServerListPanelRadius: 12px;
 introServerListPanelPadding: margins(10px, 10px, 10px, 10px);
+introServerEmptyHeight: 96px;
+introServerEmptySkip: 12px;
 introServerRowHeight: 68px;
 introServerRowPadding: margins(12px, 10px, 12px, 10px);
 introServerRowRadius: 10px;

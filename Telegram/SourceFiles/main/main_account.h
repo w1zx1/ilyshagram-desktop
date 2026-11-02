@@ -82,6 +82,9 @@ public:
 	[[nodiscard]] MTP::Instance &mtp() const {
 		return *_mtp;
 	}
+	[[nodiscard]] bool mtpExists() const {
+		return _mtp != nullptr;
+	}
 	[[nodiscard]] rpl::producer<not_null<MTP::Instance*>> mtpValue() const;
 
 	// Each time the main session changes a new copy of the pointer is fired.

@@ -21,6 +21,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "main/main_account.h"
 #include "main/main_domain.h"
+#include "owpengram/owpengram_server_list.h"
 #include "owpengram/owpengram_servers.h"
 #include "ui/boxes/confirm_box.h"
 #include "ui/effects/animations.h"
@@ -327,6 +328,16 @@ ServerSelectWidget::ServerSelectWidget(
 		this,
 		tr::lng_owpengram_server_selection_subtitle(tr::now),
 		st::introDescription))
+, _emptyLabel(
+	Ui::CreateChild<Ui::FlatLabel>(
+		_panel,
+		QString(),
+		st::introServerPickLabel))
+, _retryButton(
+	Ui::CreateChild<Ui::RoundButton>(
+		_panel,
+		rpl::single(tr::lng_owpengram_server_list_retry(tr::now)),
+		st::introServerAddButton))
 , _addServer(
 	this,
 	rpl::single(tr::lng_owpengram_server_add(tr::now)),
@@ -338,6 +349,13 @@ ServerSelectWidget::ServerSelectWidget(
 
 	_ownTitle->setAttribute(Qt::WA_TransparentForMouseEvents);
 	_ownDescription->setAttribute(Qt::WA_TransparentForMouseEvents);
+
+	_emptyLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+	_emptyLabel->hide();
+	_retryButton->hide();
+	_retryButton->setClickedCallback([=] {
+		Owpengram::RequestManagedServersRefresh(true);
+	});
 
 	_panel->setAttribute(Qt::WA_OpaquePaintEvent, false);
 	_panel->paintRequest(
@@ -371,7 +389,13 @@ ServerSelectWidget::ServerSelectWidget(
 	// Subscribing here instead of relying only on the button's own callback
 	// above is what makes a just-added server show up immediately rather
 	// than only after leaving and re-entering this screen.
-	Owpengram::CustomServersChanges(
+	//
+	// Managed servers arrive from the remote list and can change while this
+	// screen is already open (refresh every ten minutes), so the same rebuild
+	// also follows their state: loading, loaded, or failed.
+	rpl::merge(
+		Owpengram::CustomServersChanges(),
+		Owpengram::ManagedServersChanges()
 	) | rpl::on_next([=] {
 		rebuildList();
 	}, lifetime());
@@ -409,6 +433,11 @@ void ServerSelectWidget::activate() {
 	// no notification and no rebuild -- which is also why this is called
 	// from activate() and never from rebuildList().
 	Owpengram::RefreshServersInfo();
+
+	// The background refresh runs every ten minutes anyway; opening this
+	// screen is a natural moment to ask a little sooner. The module throttles
+	// itself, so re-entering the screen does not spam the list URL.
+	Owpengram::RequestManagedServersRefresh();
 }
 
 void ServerSelectWidget::submit() {
@@ -503,7 +532,22 @@ void ServerSelectWidget::rebuildList() {
 		row->show();
 		y += rowHeight + spacing;
 	}
-	_rowsContainer->resize(width, servers.empty() ? 0 : (y - spacing));
+	if (servers.empty()) {
+		const auto state = Owpengram::CurrentServersState();
+		const auto error = Owpengram::CurrentServersError();
+		_emptyLabel->setText((state == Owpengram::ServersState::Loading)
+			? tr::lng_owpengram_server_list_loading(tr::now)
+			: (error == Owpengram::ServersError::Network)
+			? tr::lng_owpengram_server_list_no_internet(tr::now)
+			: tr::lng_owpengram_server_list_failed(tr::now));
+		_emptyLabel->show();
+		_retryButton->setVisible(state == Owpengram::ServersState::Failed);
+		_rowsContainer->resize(width, st::introServerEmptyHeight);
+	} else {
+		_emptyLabel->hide();
+		_retryButton->hide();
+		_rowsContainer->resize(width, y - spacing);
+	}
 	updateListGeometry();
 }
 
@@ -634,6 +678,27 @@ void ServerSelectWidget::updateListGeometry() {
 		padding.top(),
 		panelWidth - padding.left() - padding.right(),
 		panelHeight - padding.top() - padding.bottom());
+
+	const auto area = QRect(
+		_scroll->x(),
+		_scroll->y(),
+		_scroll->width(),
+		_scroll->height());
+	_emptyLabel->resizeToWidth(area.width());
+	const auto buttonVisible = !_retryButton->isHidden();
+	auto emptyTop = area.y();
+	const auto blockHeight = _emptyLabel->height()
+		+ (buttonVisible
+			? (_retryButton->height() + st::introServerEmptySkip)
+			: 0);
+	emptyTop += std::max((area.height() - blockHeight) / 2, 0);
+	_emptyLabel->moveToLeft(area.x(), emptyTop);
+	if (buttonVisible) {
+		emptyTop += _emptyLabel->height() + st::introServerEmptySkip;
+		_retryButton->moveToLeft(
+			area.x() + (area.width() - _retryButton->width()) / 2,
+			emptyTop);
+	}
 
 	updateRowsGeometry();
 }

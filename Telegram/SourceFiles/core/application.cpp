@@ -105,6 +105,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/boxes/confirm_box.h"
 #include "core/cached_webview_availability.h"
 #include "styles/style_window.h"
+#include "owpengram/owpengram_server_list.h"
 #include "owpengram/owpengram_servers.h"
 #include "test/test_agent.h"
 
@@ -274,6 +275,7 @@ Application::~Application() {
 
 	DiscordRpc::Stop();
 	GithubUpdates::Stop();
+	Owpengram::StopManagedServers();
 
 	_windowStack.clear();
 	setLastActiveWindow(nullptr);
@@ -452,6 +454,7 @@ void Application::run() {
 	DEBUG_LOG(("Application Info: window created..."));
 
 	startDomain();
+	Owpengram::StartManagedServers();
 	startTray();
 
 	_lastActivePrimaryWindow->firstShow();

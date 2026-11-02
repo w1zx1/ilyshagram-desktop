@@ -8753,10 +8753,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_owpengram_server_host_hint" = "IP-адрес или host:port";
 "lng_owpengram_server_telegram_name" = "Telegram";
 "lng_owpengram_server_telegram_description" = "Официальное облако Telegram. Войдите через свой аккаунт Telegram.";
-"lng_owpengram_server_official_name" = "Основной";
-"lng_owpengram_server_official_description" = "Основной сервер ilyshaGram";
-"lng_owpengram_server_backup_name" = "Резервный";
-"lng_owpengram_server_backup_description" = "Резервный сервер (fumaz0)";
 "lng_owpengram_server_add_title" = "Добавить сервер";
 "lng_owpengram_server_edit_title" = "Изменить сервер";
 "lng_owpengram_server_logo" = "Значок сервера (необязательно)";
@@ -8765,8 +8761,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_owpengram_server_name" = "Название сервера";
 "lng_owpengram_server_host" = "IP-адрес";
 "lng_owpengram_server_port" = "Порт";
-"lng_owpengram_server_rsa_key" = "RSA-ключ (необязательно)";
-"lng_owpengram_server_rsa_key_hint" = "Формат PEM. Оставьте пустым, чтобы использовался ключ OwpenGram по умолчанию.";
+"lng_owpengram_server_rsa_key" = "RSA-ключ";
+"lng_owpengram_server_rsa_key_hint" = "Формат PEM. Для одиночного сервера ключ обязателен; для multi-DC можно оставить пустым — будут использованы встроенные ключи Telegram.";
+"lng_owpengram_server_rsa_key_required" = "Для одиночного сервера нужен RSA-ключ.";
 "lng_owpengram_server_rsa_key_invalid" = "Неверный RSA-ключ. Используйте PEM-формат (BEGIN PUBLIC KEY или BEGIN RSA PUBLIC KEY).";
 "lng_owpengram_server_description" = "Описание";
 "lng_owpengram_server_endpoint" = "IP: {host}  Порт: {port}";
@@ -8788,6 +8785,14 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_owpengram_server_page_prev" = "◀";
 "lng_owpengram_server_page_next" = "▶";
 "lng_owpengram_server_page" = "{current} / {total}";
+"lng_owpengram_server_list_loading" = "Загрузка списка серверов…";
+"lng_owpengram_server_list_no_internet" = "Нет подключения к интернету.";
+"lng_owpengram_server_list_failed" = "Не удалось загрузить список серверов.";
+"lng_owpengram_server_list_retry" = "Повторить";
+"lng_owpengram_server_removed_logout#one" = "Сервер «{name}» удалён. Выполнен выход из {count} аккаунта.";
+"lng_owpengram_server_removed_logout#other" = "Сервер «{name}» удалён. Выполнен выход из {count} аккаунтов.";
+"lng_owpengram_server_changed_logout#one" = "Параметры сервера «{name}» изменились. Выполнен выход из {count} аккаунта.";
+"lng_owpengram_server_changed_logout#other" = "Параметры сервера «{name}» изменились. Выполнен выход из {count} аккаунтов.";
 "lng_owpengram_tg_link_no_account" = "Эта ссылка ведёт в официальную сеть Telegram. Войдите в аккаунт Telegram в этом приложении, чтобы открыть её.";
 "lng_owpengram_tg_link_switch_account" = "Эта ссылка ведёт в официальную сеть Telegram. Переключитесь на свой аккаунт Telegram, чтобы открыть её.";
 "lng_owpengram_owpg_other_server" = "Эта ссылка принадлежит серверу, к которому вы не подключены:";

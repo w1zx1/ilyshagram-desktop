@@ -16,6 +16,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mtproto/mtproto_config.h"
 #include "mtproto/details/mtproto_rsa_public_key.h"
 #include "mtproto/mtproto_dc_options.h"
+#include "owpengram/owpengram_server_list.h"
 #include "mtproto/facade.h"
 #include "mtproto/mtp_instance.h"
 #include "base/timer.h"
@@ -36,43 +37,55 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtNetwork/QTcpSocket>
 
 namespace Owpengram {
+
+[[nodiscard]] Server ServerFromJson(const QJsonObject &object) {
+	auto result = Server();
+	result.id = object.value(u"id"_q).toString();
+	result.name = object.value(u"name"_q).toString();
+	result.host = object.value(u"host"_q).toString();
+	result.port = object.value(u"port"_q).toInt();
+	result.description = object.value(u"description"_q).toString();
+	result.rsaPublicKey = object.value(u"rsaPublicKey"_q).toString();
+	result.logoPath = object.value(u"logoPath"_q).toString();
+	result.isOfficial = false;
+	result.multiDc = object.value(u"multiDc"_q).toBool(false);
+	result.mainDcId = object.value(u"mainDcId"_q).toInt(0);
+	return result;
+}
+
+[[nodiscard]] QJsonObject ServerToJson(const Server &server) {
+	auto object = QJsonObject();
+	object.insert(u"id"_q, server.id);
+	object.insert(u"name"_q, server.name);
+	object.insert(u"host"_q, server.host);
+	object.insert(u"port"_q, server.port);
+	object.insert(u"description"_q, server.description);
+	if (!server.logoPath.isEmpty()) {
+		object.insert(u"logoPath"_q, server.logoPath);
+	}
+	if (!server.rsaPublicKey.isEmpty()) {
+		object.insert(u"rsaPublicKey"_q, server.rsaPublicKey);
+	}
+	if (server.multiDc) {
+		object.insert(u"multiDc"_q, true);
+	}
+	if (server.mainDcId > 0) {
+		object.insert(u"mainDcId"_q, server.mainDcId);
+	}
+	return object;
+}
+
 namespace {
 
 const auto kServersFile = u"owpengram_servers.json"_q;
 const auto kServerLogosDir = u"owpengram_server_logos"_q;
-// Built-in servers are synthesized from compile-time constants by
-// OfficialServer(), so unlike custom ones they have no entry in
-// kServersFile to write a refreshed name/description/logo back into. This
-// holds those cosmetic overrides for them, keyed by server id.
+// Operator-managed servers are fetched from the remote list, so unlike custom
+// ones they have no entry in kServersFile to write a refreshed
+// name/description/logo back into. This holds the cosmetic identity those
+// servers reported about themselves, keyed by server id.
 const auto kBuiltinIdentityFile = u"owpengram_builtin_identity.json"_q;
 constexpr auto kCheckTimeoutMs = 3000;
 constexpr auto kConnectTimeoutMs = 30000;
-const auto kOfficialDefaultHost = u"26.89.222.2"_q;
-constexpr auto kOfficialDefaultPort = 2398;
-const auto kBackupDefaultHost = u"26.48.168.151"_q;
-constexpr auto kBackupDefaultPort = 2398;
-
-// Default RSA public key for the built-in self-hosted OwpenGram server.
-const auto kOfficialRsaPublicKey = u"\
------BEGIN RSA PUBLIC KEY-----\n\
-MIIBCgKCAQEAxF//0M0+/5PzgdNagTX+J+dJgr75ZCTuiG8i4x7YwmJF+jiOGCjm\n\
-7X7BLCaMc1+hOZYDL3+Gvle/AKykW1qouaCJMVx/H+2l8LFXLelZ2PLawTb8A7Bl\n\
-TqWzL3db5BugMNWziL9TuhR8In1bwKY07QVpR9in5zjAsAGLBk+mGt0DnVyMf1Xo\n\
-p2lLCFNmm0F4ykcAeaLCCIPbGWddliLY8xEEhI4GO2l1U3kZMwIOdOnAGJFtgUAo\n\
-Te+FHR6F1s9adCVZB1teL/hf9R+WmekJwygVz0MYEH7y6U49T45+/W7OF6X6g0W0\n\
-j1uSSrsY4qN7twxbTad9zdGZ7ys+9v+PuQIDAQAB\n\
------END RSA PUBLIC KEY-----"_q;
-
-const auto kBackupRsaPublicKey = u"\
------BEGIN PUBLIC KEY-----\n\
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxF//0M0+/5PzgdNagTX+\n\
-J+dJgr75ZCTuiG8i4x7YwmJF+jiOGCjm7X7BLCaMc1+hOZYDL3+Gvle/AKykW1qo\n\
-uaCJMVx/H+2l8LFXLelZ2PLawTb8A7BlTqWzL3db5BugMNWziL9TuhR8In1bwKY0\n\
-7QVpR9in5zjAsAGLBk+mGt0DnVyMf1Xop2lLCFNmm0F4ykcAeaLCCIPbGWddliLY\n\
-8xEEhI4GO2l1U3kZMwIOdOnAGJFtgUAoTe+FHR6F1s9adCVZB1teL/hf9R+WmekJ\n\
-wygVz0MYEH7y6U49T45+/W7OF6X6g0W0j1uSSrsY4qN7twxbTad9zdGZ7ys+9v+P\n\
-uQIDAQAB\n\
------END PUBLIC KEY-----"_q;
 
 [[nodiscard]] QString ServersFilePath() {
 	return cWorkingDir() + u"tdata/"_q + kServersFile;
@@ -191,43 +204,6 @@ ReadSavedServerSelection(not_null<Main::Account*> account) {
 	return (selection.id == server.id)
 		&& (selection.host == server.host)
 		&& (selection.port == server.port);
-}
-
-[[nodiscard]] Server ServerFromJson(const QJsonObject &object) {
-	auto result = Server();
-	result.id = object.value(u"id"_q).toString();
-	result.name = object.value(u"name"_q).toString();
-	result.host = object.value(u"host"_q).toString();
-	result.port = object.value(u"port"_q).toInt();
-	result.description = object.value(u"description"_q).toString();
-	result.rsaPublicKey = object.value(u"rsaPublicKey"_q).toString();
-	result.logoPath = object.value(u"logoPath"_q).toString();
-	result.isOfficial = false;
-	result.multiDc = object.value(u"multiDc"_q).toBool(false);
-	result.mainDcId = object.value(u"mainDcId"_q).toInt(0);
-	return result;
-}
-
-[[nodiscard]] QJsonObject ServerToJson(const Server &server) {
-	auto object = QJsonObject();
-	object.insert(u"id"_q, server.id);
-	object.insert(u"name"_q, server.name);
-	object.insert(u"host"_q, server.host);
-	object.insert(u"port"_q, server.port);
-	object.insert(u"description"_q, server.description);
-	if (!server.logoPath.isEmpty()) {
-		object.insert(u"logoPath"_q, server.logoPath);
-	}
-	if (!server.rsaPublicKey.isEmpty()) {
-		object.insert(u"rsaPublicKey"_q, server.rsaPublicKey);
-	}
-	if (server.multiDc) {
-		object.insert(u"multiDc"_q, true);
-	}
-	if (server.mainDcId > 0) {
-		object.insert(u"mainDcId"_q, server.mainDcId);
-	}
-	return object;
 }
 
 [[nodiscard]] MTP::DcId MainDcIdForServer(const Server &server) {
@@ -412,14 +388,14 @@ void ApplyServerToDcOptions(
 			MTP_int(server.port),
 			MTPbytes()));
 	}
-	if (!server.rsaPublicKey.isEmpty()) {
-		dcOptions->setPublicKeysFromPem(server.rsaPublicKey);
-	} else {
-		// Single-server backends are NOT Telegram, so never fall back to the
-		// built-in Telegram RSA keys (the server's fingerprint would never match).
-		// Use the shared self-hosted default key instead.
-		dcOptions->setPublicKeysFromPem(kOfficialRsaPublicKey);
+	if (server.rsaPublicKey.isEmpty()) {
+		// A single-server backend is NOT Telegram, so it never falls back to
+		// the built-in Telegram keys -- that would just fail the handshake.
+		// Both the remote list and Add Server require a key for these.
+		LOG(("MTP Error: single-server '%1' has no public RSA key."
+			).arg(server.id));
 	}
+	dcOptions->setPublicKeysFromPem(server.rsaPublicKey);
 	dcOptions->setFromList(MTP_vector<MTPDcOption>(std::move(list)));
 	dcOptions->setOptionsLocked(true);
 }
@@ -462,8 +438,8 @@ void ApplyFetchedIdentity(
 		if (!logoPath.isEmpty()) {
 			next.logoPath = logoPath;
 		} else if (clearFetchedLogo(current.logoPath)) {
-			// Emptied here means the key is dropped on write, so
-			// OfficialServer() falls back to its bundled DefaultLogoPath().
+			// Emptied here means the key is dropped on write, so the server
+			// falls back to whatever the remote list or a custom logo provides.
 			next.logoPath = QString();
 		}
 		if (next.name == current.name
@@ -543,17 +519,14 @@ void ApplyFetchedIdentity(
 		result.port = selection.port;
 		return result;
 	}
-	// Fallback for built-in ids that aren't in the live list for some reason:
-	// start from the full known profile (kind, keys, dc) and override address.
+	// The id is no longer in the live list. A managed server was removed (its
+	// accounts are logged out as part of the same update); a custom server was
+	// deleted. Either way all that is left is the saved address -- and no key,
+	// so nothing can be connected until the list provides it again.
 	auto result = Server();
 	if (selection.id == QString::fromLatin1(kTelegramServerId)) {
 		result = TelegramServer();
-	} else if (selection.id == QString::fromLatin1(kOfficialServerId)) {
-		result = OfficialServer();
-	} else if (selection.id == QString::fromLatin1(kBackupServerId)) {
-		result = BackupServer();
 	} else {
-		// Unknown custom server: a single-server backend on dc 1 by default.
 		result.name = selection.host;
 		result.isOfficial = false;
 	}
@@ -563,16 +536,8 @@ void ApplyFetchedIdentity(
 	return result;
 }
 
-QString DefaultLogoPath() {
-	return u":/gui/art/logo_256.png"_q;
-}
-
 QString TelegramLogoPath() {
 	return u":/gui/art/telegram_logo_256.png"_q;
-}
-
-QString BackupLogoPath() {
-	return u":/gui/art/backup_logo_256.png"_q;
 }
 
 Server TelegramServer() {
@@ -590,59 +555,6 @@ Server TelegramServer() {
 	return result;
 }
 
-Server OfficialServer() {
-	auto result = Server();
-	result.id = QString::fromLatin1(kOfficialServerId);
-	result.name = tr::lng_owpengram_server_official_name(tr::now);
-	result.description = tr::lng_owpengram_server_official_description(tr::now);
-	result.logoPath = DefaultLogoPath();
-	// Whatever the operator has since set on the server itself wins over the
-	// shipped defaults -- see RefreshServersInfo(). Only these three fields:
-	// host/port/key below stay compiled-in on purpose.
-	const auto identity = ReadBuiltinIdentity(result.id);
-	if (!identity.name.isEmpty()) {
-		result.name = identity.name;
-	}
-	if (!identity.description.isEmpty()) {
-		result.description = identity.description;
-	}
-	if (!identity.logoPath.isEmpty()) {
-		result.logoPath = identity.logoPath;
-	}
-	result.isOfficial = true;
-	result.host = kOfficialDefaultHost;
-	result.port = kOfficialDefaultPort;
-	result.rsaPublicKey = kOfficialRsaPublicKey;
-	result.multiDc = false;
-	result.mainDcId = 1;
-	return result;
-}
-
-Server BackupServer() {
-	auto result = Server();
-	result.id = QString::fromLatin1(kBackupServerId);
-	result.name = tr::lng_owpengram_server_backup_name(tr::now);
-	result.description = tr::lng_owpengram_server_backup_description(tr::now);
-	result.logoPath = BackupLogoPath();
-	const auto identity = ReadBuiltinIdentity(result.id);
-	if (!identity.name.isEmpty()) {
-		result.name = identity.name;
-	}
-	if (!identity.description.isEmpty()) {
-		result.description = identity.description;
-	}
-	if (!identity.logoPath.isEmpty()) {
-		result.logoPath = identity.logoPath;
-	}
-	result.isOfficial = true;
-	result.host = kBackupDefaultHost;
-	result.port = kBackupDefaultPort;
-	result.rsaPublicKey = kBackupRsaPublicKey;
-	result.multiDc = false;
-	result.mainDcId = 2;
-	return result;
-}
-
 QString FormatEndpoint(const Server &server) {
 	return u"IP: %1\nPort: %2"_q.arg(
 		server.host,
@@ -652,8 +564,9 @@ QString FormatEndpoint(const Server &server) {
 std::vector<Server> ListServers() {
 	auto result = std::vector<Server>();
 	result.push_back(TelegramServer());
-	result.push_back(OfficialServer());
-	result.push_back(BackupServer());
+	for (auto &server : ManagedServers()) {
+		result.push_back(std::move(server));
+	}
 	for (const auto &custom : ReadCustomServers()) {
 		result.push_back(custom);
 	}
@@ -678,7 +591,10 @@ std::optional<Server> AddCustomServer(
 		const QString &logoSourcePath,
 		bool multiDc,
 		int mainDcId) {
-	if (name.trimmed().isEmpty() || host.trimmed().isEmpty() || port <= 0) {
+	if (name.trimmed().isEmpty()
+		|| host.trimmed().isEmpty()
+		|| port <= 0
+		|| (!multiDc && rsaPublicKey.trimmed().isEmpty())) {
 		return std::nullopt;
 	}
 	auto server = Server();
@@ -716,7 +632,8 @@ std::optional<Server> UpdateCustomServer(
 	if (id.isEmpty()
 		|| name.trimmed().isEmpty()
 		|| host.trimmed().isEmpty()
-		|| port <= 0) {
+		|| port <= 0
+		|| (!multiDc && rsaPublicKey.trimmed().isEmpty())) {
 		return std::nullopt;
 	}
 	auto array = ReadCustomServersJson();
@@ -757,15 +674,13 @@ std::optional<Server> UpdateCustomServer(
 }
 
 bool IsRemovableServer(const Server &server) {
-	return !server.isOfficial
-		&& server.id != QString::fromLatin1(kTelegramServerId)
-		&& server.id != QString::fromLatin1(kOfficialServerId)
-		&& server.id != QString::fromLatin1(kBackupServerId);
+	return !server.managed
+		&& !server.isOfficial
+		&& server.id != QString::fromLatin1(kTelegramServerId);
 }
 
 bool RemoveCustomServer(const QString &id) {
-	if (id == QString::fromLatin1(kOfficialServerId)
-		|| id == QString::fromLatin1(kBackupServerId)
+	if (IsManagedServerId(id)
 		|| id == QString::fromLatin1(kTelegramServerId)) {
 		return false;
 	}
@@ -891,7 +806,9 @@ Server CurrentServerForAccount(not_null<Main::Account*> account) {
 			return server;
 		}
 	}
-	return OfficialServer();
+	// No saved selection means the account predates server selection, i.e. a
+	// plain Telegram account. There is no built-in self-hosted default anymore.
+	return TelegramServer();
 }
 
 std::vector<not_null<Main::Account*>> AccountsUsingServer(
@@ -906,6 +823,41 @@ std::vector<not_null<Main::Account*>> AccountsUsingServer(
 		}
 	}
 	return result;
+}
+
+std::vector<not_null<Main::Account*>> AccountsWithStoredServer(
+		const QString &serverId) {
+	auto result = std::vector<not_null<Main::Account*>>();
+	if (serverId.isEmpty()) {
+		return result;
+	}
+	for (const auto &account : Core::App().domain().orderedAccounts()) {
+		const auto selection = ReadSavedServerSelection(account);
+		if (selection && selection->id == serverId) {
+			result.push_back(account);
+		}
+	}
+	return result;
+}
+
+void UpdateStoredServerEndpoint(
+		const QString &serverId,
+		const QString &host,
+		int port) {
+	if (serverId.isEmpty() || host.isEmpty() || port <= 0) {
+		return;
+	}
+	for (const auto &account : AccountsWithStoredServer(serverId)) {
+		const auto selection = ReadSavedServerSelection(account);
+		if (!selection
+			|| (selection->host == host && selection->port == port)) {
+			continue;
+		}
+		account->local().writeOwpengramServer(serverId, host, port);
+		if (account->mtpExists()) {
+			RestoreServerToAccount(account);
+		}
+	}
 }
 
 QString ServerScopeKeyForAccount(not_null<Main::Account*> account) {
@@ -930,6 +882,10 @@ QString ResolveServerLogoPath(const QString &logoPath) {
 	return cWorkingDir() + u"tdata/"_q + logoPath;
 }
 
+bool IsServerLogoPath(const QString &logoPath) {
+	return IsCustomServerLogoPath(logoPath);
+}
+
 bool IsValidRsaPublicKeyPem(const QString &pem) {
 	const auto trimmed = pem.trimmed();
 	if (trimmed.isEmpty()) {
@@ -937,6 +893,54 @@ bool IsValidRsaPublicKeyPem(const QString &pem) {
 	}
 	const auto utf8 = trimmed.toUtf8();
 	return MTP::details::RSAPublicKey(bytes::make_span(utf8)).valid();
+}
+
+uint64 ServerKeyFingerprint(const QString &pem) {
+	const auto trimmed = pem.trimmed();
+	if (trimmed.isEmpty()) {
+		return 0;
+	}
+	const auto utf8 = trimmed.toUtf8();
+	const auto key = MTP::details::RSAPublicKey(bytes::make_span(utf8));
+	return key.valid() ? key.fingerprint() : 0;
+}
+
+Server WithServerIdentity(Server server) {
+	const auto identity = ReadBuiltinIdentity(server.id);
+	if (server.name.isEmpty()) {
+		server.name = identity.name;
+	}
+	if (server.description.isEmpty()) {
+		server.description = identity.description;
+	}
+	if (server.logoPath.isEmpty()) {
+		server.logoPath = identity.logoPath;
+	}
+	if (server.name.isEmpty()) {
+		server.name = server.host;
+	}
+	return server;
+}
+
+std::optional<QString> SaveListServerLogo(
+		const QString &serverId,
+		const QByteArray &data) {
+	if (serverId.isEmpty() || data.isEmpty()) {
+		return std::nullopt;
+	}
+	const auto digest = QString::fromLatin1(
+		QCryptographicHash::hash(data, QCryptographicHash::Md5)
+			.toHex()
+			.left(8));
+	// '@' cannot appear in a server id, so a list logo can never be mistaken
+	// for the "<id>_<digest>.png" file RefreshServersInfo() manages.
+	return SaveServerLogoImage(
+		Images::Read({ .content = data, .forceOpaque = true }).image,
+		u"@list_"_q + serverId + u"_"_q + digest);
+}
+
+void RemoveServerLogoFile(const QString &logoPath) {
+	RemoveCustomServerLogoFile(logoPath);
 }
 
 void ApplyServerToAccount(
